@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="DLS" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="Photocor" />
+    <working_directory value="$PROJECT_DIR$" />
+    <go_parameters value="-tags=walk -ldflags=&quot;-s -w -H windowsgui -buildmode=exe&quot;" />
+    <kind value="PACKAGE" />
+    <package value="Photocor" />
+    <directory value="$PROJECT_DIR$" />
+    <output_directory value="$PROJECT_DIR$" />
+    <auto_managed_config_id value="$PROJECT_DIR$" />
+    <method v="2" />
+  </configuration>
+</component>
