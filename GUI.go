@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"strconv"
 
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
@@ -13,6 +14,7 @@ func GUI() {
 		inputData      *walk.LineEdit
 		inputOrderName *walk.LineEdit
 		statusFiles    *walk.TextEdit
+		statusSearch   *walk.Label
 		statusLabel    *walk.Label
 		mw             *walk.MainWindow
 	)
@@ -26,21 +28,33 @@ func GUI() {
 		Size:   Size{Width: 350, Height: 400},
 		Layout: VBox{},
 		Children: []Widget{
+
 			Label{Text: "Путь к папке:"},
 			LineEdit{AssignTo: &inputData, Text: filesFolder},
 
 			PushButton{
 				Text: "Повторить поиск",
 				OnClicked: func() {
-					err := statusLabel.SetText(search(inputData.Text()))
+					countOfFiles = 0
+
+					err := statusLabel.SetText("Прочитаны файлы из " + filesFolder)
 					if err != nil {
 						log.Panic(err.Error())
-						return
+					}
+
+					err = statusFiles.SetText(readFiles(inputData.Text()))
+					if err != nil {
+						log.Panic(err.Error())
+					}
+
+					err = statusSearch.SetText("Найденные файлы: " + strconv.Itoa(countOfFiles))
+					if err != nil {
+						log.Panic(err.Error())
 					}
 				},
 			},
 
-			Label{Text: "Найденные файлы:"},
+			Label{AssignTo: &statusSearch, Text: "Найденные файлы:"},
 			TextEdit{AssignTo: &statusFiles, ReadOnly: true, VScroll: true},
 
 			Label{Text: "Инициалы исполнителя:"},
@@ -64,7 +78,14 @@ func GUI() {
 		log.Fatal(err)
 	}
 
-	statusLabel.SetText(search(filesFolder)) //запуск поиска на старте
+	err := statusLabel.SetText("Прочитаны файлы из " + filesFolder) //запуск поиска на старте
+	if err != nil {
+		log.Panic(err.Error())
+	}
+	err = statusFiles.SetText(readFiles(filesFolder))
+	if err != nil {
+		log.Panic(err.Error())
+	}
 
 	mw.Run()
 }
