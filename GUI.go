@@ -11,12 +11,11 @@ import (
 func GUI() {
 
 	var (
-		inputData      *walk.LineEdit
-		inputOrderName *walk.LineEdit
-		statusFiles    *walk.TextEdit
-		statusSearch   *walk.Label
-		statusLabel    *walk.Label
-		mw             *walk.MainWindow
+		inputData    *walk.LineEdit
+		statusFiles  *walk.TextEdit
+		statusSearch *walk.Label
+		statusLabel  *walk.Label
+		mw           *walk.MainWindow
 	)
 
 	//appIcon, _ := walk.NewIconFromResourceId(2)
@@ -42,7 +41,7 @@ func GUI() {
 						log.Panic(err.Error())
 					}
 
-					err = statusFiles.SetText(readFiles(inputData.Text()))
+					err = statusFiles.SetText(readFileList(inputData.Text()))
 					if err != nil {
 						log.Panic(err.Error())
 					}
@@ -57,13 +56,10 @@ func GUI() {
 			Label{AssignTo: &statusSearch, Text: "Найденные файлы:"},
 			TextEdit{AssignTo: &statusFiles, ReadOnly: true, VScroll: true},
 
-			Label{Text: "Инициалы исполнителя:"},
-			LineEdit{AssignTo: &inputOrderName},
-
 			PushButton{
 				Text: "Создать .xlsx",
 				OnClicked: func() {
-					err := statusLabel.SetText(createXlsx(inputOrderName.Text()))
+					err := statusLabel.SetText("Файл " + createFile(filesList) + " успешно создан")
 					if err != nil {
 						log.Panic(err.Error())
 					}
@@ -82,7 +78,7 @@ func GUI() {
 	if err != nil {
 		log.Panic(err.Error())
 	}
-	err = statusFiles.SetText(readFiles(filesFolder))
+	err = statusFiles.SetText(readFileList(filesFolder))
 	if err != nil {
 		log.Panic(err.Error())
 	}

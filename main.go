@@ -10,7 +10,7 @@ import (
 //"C:\\Users\\user\\Desktop\\Photocor\\"
 //C:\Users\Lekko\Documents\фотокор\2025\Июнь\240625
 
-var filesFolder = "C:\\Users\\Lekko\\Documents\\фотокор\\" +
+var filesFolder = "C:\\Users\\GUEST\\Documents\\фотокор\\" +
 	strconv.Itoa(time.Now().Year()) + "\\" +
 	todayMonth() + "\\" +
 	time.Now().Format("020106")
