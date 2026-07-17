@@ -36,12 +36,14 @@ func GUI() {
 				OnClicked: func() {
 					countOfFiles = 0
 
+					filesFolder = inputData.Text()
+
 					err := statusLabel.SetText("Прочитаны файлы из " + filesFolder)
 					if err != nil {
 						log.Panic(err.Error())
 					}
 
-					err = statusFiles.SetText(readFileList(inputData.Text()))
+					err = statusFiles.SetText(readFileList(filesFolder))
 					if err != nil {
 						log.Panic(err.Error())
 					}
@@ -59,7 +61,7 @@ func GUI() {
 			PushButton{
 				Text: "Создать .xlsx",
 				OnClicked: func() {
-					err := statusLabel.SetText("Файл " + createFile(filesList) + " успешно создан")
+					err := statusLabel.SetText("Файл " + createFile() + " успешно создан")
 					if err != nil {
 						log.Panic(err.Error())
 					}

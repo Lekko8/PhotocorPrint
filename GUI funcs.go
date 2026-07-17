@@ -10,6 +10,7 @@ import (
 )
 
 var filesList []string
+var reportMatrix = make(map[ReportKey]SampleData)
 
 // Собирает список файлов в массив имён и запускает чтение данных
 func readFileList(filesFolder string) string {
@@ -17,7 +18,7 @@ func readFileList(filesFolder string) string {
 
 	defer func() {
 		if filesList != nil {
-			initDataRead()
+			reportMatrix = initDataRead()
 		}
 	}()
 
@@ -25,46 +26,39 @@ func readFileList(filesFolder string) string {
 
 	files, err := os.ReadDir(filesFolder) // читаем все файлы в папке
 	if err != nil {
-		countOfFiles = 0
 		return buildNames(filesList) // если файлов нет, то возвращаем пустой список
 	}
 
 	for _, file := range files { // ищем подходящие файлы
 
-		if !file.IsDir() && (filepath.Ext(file.Name()) == ".TXT" || filepath.Ext(file.Name()) == ".txt") {
+		if !file.IsDir() && (strings.ToUpper(filepath.Ext(file.Name())) == ".TXT") {
 			filesList = append(filesList, file.Name()) // кладём подходящий
-			countOfFiles++
 		}
 	}
+	countOfFiles = len(filesList)
 
 	log.Print("Чтение файлов: ", time.Since(start))
 	return buildNames(filesList)
 }
 
 // Создаёт .xlsx файл
-func createFile(fileList []string) string {
+func createFile() string {
 	start := time.Now()
 
-	log.Print(len(filesList))
+	log.Print("Количество файлов: ", len(filesList))
 
 	_, weekNum := time.Now().ISOWeek()
 
 	resultFileName := "DLS_rlt_" + strconv.Itoa(weekNum) + "_" +
 		time.Now().Format("02012006") + "_s_" + ".xlsx"
 
-	filesWithData := map[string][]string{}
-
-	for _, file := range fileList {
-		filesWithData[file] = []string{}
-	}
-
-	xlsx(resultFileName)
+	xlsx(resultFileName, reportMatrix)
 
 	log.Print("Создание файла: ", time.Since(start))
 	return resultFileName
 }
 
-// Расбивает массив имён файлов в формат для вывода
+// Разбивает массив имён файлов в формат для вывода
 func buildNames(files []string) string {
 	if len(files) == 0 {
 		return ""

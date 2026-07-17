@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"log"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -13,18 +14,20 @@ type WorkerResult struct {
 	Err  error
 }
 
+// ReportKey информация по файлу
 type ReportKey struct {
-	Group string
+	Group string // Unique identifier for the order.
 	Name  string
 }
 
+// SampleData данные из файла
 type SampleData struct {
 	MeanIntensity     string
 	RateOfCorrectUnit string
 }
 
 // Запускает горутины чтения .TXT файлов и собирает все данные в WorkerResult
-func initDataRead() {
+func initDataRead() map[ReportKey]SampleData {
 
 	resultChan := make(chan WorkerResult, len(filesList))
 
@@ -46,11 +49,23 @@ func initDataRead() {
 		wg.Wait()
 		close(resultChan)
 	}()
+
+	for res := range resultChan {
+
+		if res.Err != nil {
+			log.Print(res.Err)
+		}
+
+		reportMatrix[res.Key] = res.Data
+
+	}
+	return reportMatrix
 }
 
 // Собирает данные из .TXT файла во временную мапу
-func readFile(file string) {
-	txtFile, err := os.Open(filesFolder + file)
+func readFile(fileName string) (ReportKey, SampleData, error) {
+	txtFile, err := os.Open(filesFolder + "/" + fileName)
+	log.Print("Reading file: ", fileName)
 	if err != nil {
 		log.Printf("Error opening file: %v", err)
 	}
@@ -60,12 +75,39 @@ func readFile(file string) {
 			log.Printf("Error closing file: %v", err)
 		}
 	}()
+
 	scanner := bufio.NewScanner(txtFile)
 
 	lineNumber := 1
+	notFound := true
+	var mean string
 	for scanner.Scan() {
 		line := scanner.Text()
+		switch notFound {
+		case true:
+			if strings.Contains(line, "Mean signal intensity") { // 26 строка
+				mean = strings.Split(line, ":")[1]
+				notFound = false
+			}
+		case false:
+			if strings.Contains(line, "Rate of correct unit") { // 342 строка
+				return forKey(fileName), forData(mean, strings.Split(line, ":")[1]), nil
+			}
+		}
 
 		lineNumber++
+
 	}
+	return forKey(fileName), forData("", ""), err
+}
+
+func forKey(fileName string) ReportKey {
+
+	names := strings.Split(fileName, "_")
+
+	return ReportKey{names[0], strings.Split(strings.TrimPrefix(fileName, names[0]+"_"), ".")[0]}
+}
+
+func forData(mean, line string) SampleData {
+	return SampleData{strings.TrimSpace(mean), strings.TrimSpace(line)}
 }
