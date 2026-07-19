@@ -4,45 +4,41 @@ import (
 	"bufio"
 	"log"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 )
 
 type WorkerResult struct {
-	Key  ReportKey
+	Name string
 	Data SampleData
 	Err  error
 }
 
-// ReportKey информация по файлу
-type ReportKey struct {
-	Group string // Unique identifier for the order.
-	Name  string
-}
-
 // SampleData данные из файла
 type SampleData struct {
+	Group             string
 	MeanIntensity     string
 	RateOfCorrectUnit string
 }
 
 // Запускает горутины чтения .TXT файлов и собирает все данные в WorkerResult
-func initDataRead() map[ReportKey]SampleData {
+func initDataRead() (map[string]SampleData, []string) {
 
 	resultChan := make(chan WorkerResult, len(filesList))
 
 	var wg sync.WaitGroup
 
-	for _, file := range filesList {
+	for _, fileName := range filesList {
 		wg.Add(1)
-		go func(file string) {
+		go func(fileName string) {
 			defer wg.Done()
 
-			Key, Data, Err := readFile(file)
+			Data, Err := readFile(fileName)
 
-			resultChan <- WorkerResult{Key: Key, Data: Data, Err: Err}
+			resultChan <- WorkerResult{Name: fileName, Data: Data, Err: Err}
 
-		}(file)
+		}(fileName)
 	}
 
 	go func() {
@@ -50,20 +46,27 @@ func initDataRead() map[ReportKey]SampleData {
 		close(resultChan)
 	}()
 
-	for res := range resultChan {
+	tempGroups := make(map[string]struct{})
 
+	for res := range resultChan {
 		if res.Err != nil {
 			log.Print(res.Err)
 		}
 
-		reportMatrix[res.Key] = res.Data
-
+		reportMatrix[res.Name] = res.Data
+		tempGroups[res.Data.Group] = struct{}{}
 	}
-	return reportMatrix
+
+	for group := range tempGroups {
+		groupsList = append(groupsList, group)
+	}
+	slices.Sort(groupsList)
+
+	return reportMatrix, groupsList
 }
 
 // Собирает данные из .TXT файла во временную мапу
-func readFile(fileName string) (ReportKey, SampleData, error) {
+func readFile(fileName string) (SampleData, error) {
 	txtFile, err := os.Open(filesFolder + "/" + fileName)
 	log.Print("Reading file: ", fileName)
 	if err != nil {
@@ -91,23 +94,17 @@ func readFile(fileName string) (ReportKey, SampleData, error) {
 			}
 		case false:
 			if strings.Contains(line, "Rate of correct unit") { // 342 строка
-				return forKey(fileName), forData(mean, strings.Split(line, ":")[1]), nil
+				return forData(fileName, mean, strings.Split(line, ":")[1]), nil
 			}
 		}
-
 		lineNumber++
 
 	}
-	return forKey(fileName), forData("", ""), err
+	return forData(fileName, "", ""), err
 }
 
-func forKey(fileName string) ReportKey {
-
-	names := strings.Split(fileName, "_")
-
-	return ReportKey{names[0], strings.Split(strings.TrimPrefix(fileName, names[0]+"_"), ".")[0]}
-}
-
-func forData(mean, line string) SampleData {
-	return SampleData{strings.TrimSpace(mean), strings.TrimSpace(line)}
+func forData(fileName, mean, line string) SampleData {
+	return SampleData{strings.Split(fileName, "_")[0],
+		strings.TrimSpace(mean),
+		strings.TrimSpace(line)}
 }

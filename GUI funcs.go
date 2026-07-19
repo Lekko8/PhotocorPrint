@@ -10,15 +10,17 @@ import (
 )
 
 var filesList []string
-var reportMatrix = make(map[ReportKey]SampleData)
+var reportMatrix = make(map[string]SampleData)
+var groupsList []string
 
-// Собирает список файлов в массив имён и запускает чтение данных
+// Возвращает список файлов в массив имён и запускает чтение данных
 func readFileList(filesFolder string) string {
 	start := time.Now()
 
 	defer func() {
 		if filesList != nil {
-			reportMatrix = initDataRead()
+			groupsList = groupsList[:0] // очищаем память (сохраняя ёмкость) для чистой перезаписи
+			reportMatrix, groupsList = initDataRead()
 		}
 	}()
 
