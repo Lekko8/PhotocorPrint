@@ -10,9 +10,9 @@ import (
 )
 
 type WorkerResult struct {
-	Name string
-	Data SampleData
-	Err  error
+	FileName string
+	Data     SampleData
+	Err      error
 }
 
 // SampleData данные из файла
@@ -36,7 +36,7 @@ func initDataRead() (map[string]SampleData, []string) {
 
 			Data, Err := readFile(fileName)
 
-			resultChan <- WorkerResult{Name: fileName, Data: Data, Err: Err}
+			resultChan <- WorkerResult{FileName: fileName, Data: Data, Err: Err}
 
 		}(fileName)
 	}
@@ -53,7 +53,7 @@ func initDataRead() (map[string]SampleData, []string) {
 			log.Print(res.Err)
 		}
 
-		reportMatrix[res.Name] = res.Data
+		reportMatrix[res.FileName] = res.Data
 		tempGroups[res.Data.Group] = struct{}{}
 	}
 
@@ -67,8 +67,9 @@ func initDataRead() (map[string]SampleData, []string) {
 
 // Собирает данные из .TXT файла во временную мапу
 func readFile(fileName string) (SampleData, error) {
+
 	txtFile, err := os.Open(filesFolder + "/" + fileName)
-	log.Print("Reading file: ", fileName)
+
 	if err != nil {
 		log.Printf("Error opening file: %v", err)
 	}
@@ -86,19 +87,19 @@ func readFile(fileName string) (SampleData, error) {
 	var mean string
 	for scanner.Scan() {
 		line := scanner.Text()
-		switch notFound {
-		case true:
+
+		if notFound {
 			if strings.Contains(line, "Mean signal intensity") { // 26 строка
 				mean = strings.Split(line, ":")[1]
 				notFound = false
 			}
-		case false:
+		} else {
 			if strings.Contains(line, "Rate of correct unit") { // 342 строка
 				return forData(fileName, mean, strings.Split(line, ":")[1]), nil
 			}
 		}
-		lineNumber++
 
+		lineNumber++
 	}
 	return forData(fileName, "", ""), err
 }

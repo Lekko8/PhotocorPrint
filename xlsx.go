@@ -3,16 +3,14 @@ package main
 import (
 	_ "image/jpeg"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/xuri/excelize/v2"
 )
 
 func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
-	log.Println(reportMatrix)
-	log.Println(groupsList)
 
-	// Создаем новый файл
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -20,7 +18,6 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 		}
 	}()
 
-	// Открываем исходный файл
 	sd, err := excelize.OpenFile(filesFolder + "\\Сырые данные.xlsx")
 	if err != nil {
 		log.Panic("Ошибка открытия сырых данных", err)
@@ -31,21 +28,21 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 		}
 	}()
 
-	// Ячейки для вставки картинок в новом файле
-	picsCellsF := []string{"G13", "N13", "N24"}
+	picsCellsF := []string{"G13", "N13", "N24"} // Целевые ячейки для графиков
 
 	for idx := range groupsList {
 		sheetName := groupsList[idx]
 
-		// Создаем новый лист
 		index, err := f.NewSheet(sheetName)
 		if err != nil {
 			log.Printf("Ошибка создания листа %s: %v", sheetName, err)
 			continue
 		}
 
-		// Получаем объединенные ячейки для определения структуры
 		m, err := sd.GetMergeCells(sheetName, true)
+		if err != nil {
+			log.Print(err.Error())
+		}
 		if len(m) < 2 {
 			log.Printf("Недостаточно объединенных ячеек для %s", sheetName)
 			continue
@@ -53,12 +50,16 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 
 		p2 := m[0].GetStartAxis()
 		p1 := m[1].GetStartAxis()
-		col, row, _ := excelize.CellNameToCoordinates(p2)
-		p3, _ := excelize.CoordinatesToCellName(col, row+1)
+		col, row, err := excelize.CellNameToCoordinates(p2)
+		if err != nil {
+			log.Print(err.Error())
+		}
+		p3, err := excelize.CoordinatesToCellName(col, row+1)
+		if err != nil {
+			log.Print(err.Error())
+		}
 
-		// ============ КОПИРУЕМ КАРТИНКИ ============
-		picsCellSD := []string{p1, p2, p3}
-		log.Println(sheetName, "Ячейки чтения картинок: ", picsCellSD)
+		picsCellSD := []string{p1, p2, p3} // Копируем графики
 
 		var pics []excelize.Picture
 		for _, c := range picsCellSD {
@@ -85,27 +86,28 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 			}
 		}
 
-		// ============ 1. СНАЧАЛА ВСТАВЛЯЕМ 6 ПУСТЫХ СТРОК ============
-		//err = f.InsertRows(sheetName, 1, 6)
-		//if err != nil {
-		//	log.Printf("Ошибка вставки строк: %v", err)
-		//}
-
-		// ============ ПОЛУЧАЕМ ВСЕ СТРОКИ ИЗ ИСХОДНОГО ФАЙЛА ============
-		rows, err := sd.GetRows(sheetName)
+		rows, err := sd.GetRows(sheetName) // Читаем всю страницу
 		if err != nil {
 			log.Print(err)
 			continue
 		}
 
-		_, startReadingRow, _ := excelize.CellNameToCoordinates(p3)
+		_, startReadingRow, err := excelize.CellNameToCoordinates(p3)
+		if err != nil {
+			log.Print(err.Error())
+		}
+
 		startReadingRow = startReadingRow + 3
 
-		// ============ 2. КОПИРУЕМ ШАПКУ И МАРКЕРЫ ============
-		currentRow := 10
+		currentRow := 10 // Отступаем шапку
 
 		for rowNum := 1; rowNum < startReadingRow; rowNum++ {
-			srcCell, _ := excelize.CoordinatesToCellName(1, rowNum)
+
+			srcCell, err := excelize.CoordinatesToCellName(1, rowNum)
+			if err != nil {
+				log.Print(err.Error())
+			}
+
 			val, err := sd.GetCellValue(sheetName, srcCell)
 			if err != nil {
 				continue
@@ -115,59 +117,73 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 				continue
 			}
 
-			richText, _ := sd.GetCellRichText(sheetName, srcCell)
-			dstCell, _ := excelize.CoordinatesToCellName(1, currentRow)
+			richText, err := sd.GetCellRichText(sheetName, srcCell)
+			if err != nil {
+				log.Print(err.Error())
+			}
+
+			dstCell, err := excelize.CoordinatesToCellName(1, currentRow)
+			if err != nil {
+				log.Print(err.Error())
+			}
 
 			if len(richText) > 0 {
-				f.SetCellRichText(sheetName, dstCell, richText)
+				err = f.SetCellRichText(sheetName, dstCell, richText)
+				if err != nil {
+					log.Print(err.Error())
+				}
 			} else {
-				f.SetCellValue(sheetName, dstCell, val)
+				err = f.SetCellValue(sheetName, dstCell, val)
+				if err != nil {
+					log.Print(err.Error())
+				}
 			}
 
 			copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
 			currentRow++
 		}
 
-		// Добавляем пустую строку после шапки (после "File(s): ...")
-		rowsAfterCopy, _ := f.GetRows(sheetName)
+		rowsAfterCopy, err := f.GetRows(sheetName)
+		if err != nil {
+			log.Print(err.Error())
+		}
 		for i, row := range rowsAfterCopy {
 			if len(row) > 0 && strings.Contains(row[0], "File(s):") {
-				f.InsertRows(sheetName, i+2, 1)
+				err = f.InsertRows(sheetName, i+2, 1) // Добавляем пустую строку после "File(s): ..."
+				if err != nil {
+					log.Print(err.Error())
+				}
 				break
 			}
 		}
 
-		// Запоминаем строку, где закончились маркеры
-		headerEndRow := currentRow - 1
+		headerEndRow := currentRow - 1 // Запоминаем строку, где закончились маркеры
 
 		if headerEndRow < 19 {
 			headerEndRow = currentRow - 1
 		}
 
-		log.Printf("%s: Последний маркер в строке %d", sheetName, headerEndRow)
-
-		// ============ 3. КОПИРУЕМ ОСНОВНЫЕ ДАННЫЕ ============
-		// Находим блок заголовков
-		var headerRows []int
-		for rowNum := startReadingRow; rowNum < len(rows); rowNum++ {
+		var headerRows []int                                          // Начинаем копировать остальные данные
+		for rowNum := startReadingRow; rowNum < len(rows); rowNum++ { // Находим блок заголовков
 			if len(rows[rowNum]) > 0 && strings.Contains(rows[rowNum][0], "Distribution analysis") {
+
 				for j := rowNum - 1; j <= rowNum+5 && j < len(rows); j++ {
 					if j >= startReadingRow {
 						headerRows = append(headerRows, j)
 					}
 				}
 				break
+
 			}
 		}
 
-		// Находим все блоки с данными
 		type Block struct {
 			markerRow  int
 			tableStart int
 			tableEnd   int
 			c2Row      int
 		}
-		var blocks []Block
+		var blocks []Block // Находим все блоки с данными
 
 		for rowNum := startReadingRow; rowNum < len(rows); rowNum++ {
 			if len(rows[rowNum]) > 0 && strings.Contains(rows[rowNum][0], "File: ") {
@@ -203,24 +219,35 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 			}
 		}
 
-		// ============ 4. ВСТАВЛЯЕМ ДАННЫЕ ПОСЛЕ МАРКЕРОВ ============
-		dataStartRow := headerEndRow + 2
+		dataStartRow := headerEndRow + 2 // Вставляем данные после имён файлов
 		currentRow = dataStartRow
 
-		if len(blocks) > 0 {
-			// Записываем заголовки через RichText
+		if len(blocks) > 0 { // Записываем заголовки через RichText
+
 			for _, headerRow := range headerRows {
 				if headerRow < len(rows) {
 					for colIdx := 0; colIdx < 5 && colIdx < len(rows[headerRow]); colIdx++ {
 						if rows[headerRow][colIdx] != "" {
-							srcCell, _ := excelize.CoordinatesToCellName(colIdx+1, headerRow+1)
-							dstCell, _ := excelize.CoordinatesToCellName(colIdx+1, currentRow)
+							srcCell, err := excelize.CoordinatesToCellName(colIdx+1, headerRow+1)
+							if err != nil {
+								log.Print(err.Error())
+							}
+							dstCell, err := excelize.CoordinatesToCellName(colIdx+1, currentRow)
+							if err != nil {
+								log.Print(err.Error())
+							}
 
 							richText, err := sd.GetCellRichText(sheetName, srcCell)
 							if err == nil && len(richText) > 0 {
-								f.SetCellRichText(sheetName, dstCell, richText)
+								err = f.SetCellRichText(sheetName, dstCell, richText)
+								if err != nil {
+									log.Print(err.Error())
+								}
 							} else {
-								f.SetCellValue(sheetName, dstCell, rows[headerRow][colIdx])
+								err = f.SetCellValue(sheetName, dstCell, rows[headerRow][colIdx])
+								if err != nil {
+									log.Print(err.Error())
+								}
 							}
 							copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
 						}
@@ -229,42 +256,62 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 				}
 			}
 
-			// Пустая строка после заголовков
-			currentRow++
+			currentRow++ // Пустая строка после заголовков
 
-			// Записываем блоки
 			for _, block := range blocks {
-				// Маркер
+
 				if block.markerRow < len(rows) {
-					srcCell, _ := excelize.CoordinatesToCellName(1, block.markerRow+1)
-					dstCell, _ := excelize.CoordinatesToCellName(1, currentRow)
+					srcCell, err := excelize.CoordinatesToCellName(1, block.markerRow+1)
+					if err != nil {
+						log.Print(err.Error())
+					}
+					dstCell, err := excelize.CoordinatesToCellName(1, currentRow)
+					if err != nil {
+						log.Print(err.Error())
+					}
 
 					richText, err := sd.GetCellRichText(sheetName, srcCell)
 					if err == nil && len(richText) > 0 {
-						f.SetCellRichText(sheetName, dstCell, richText)
+						err = f.SetCellRichText(sheetName, dstCell, richText)
+						if err != nil {
+							log.Print(err.Error())
+						}
 					} else {
-						f.SetCellValue(sheetName, dstCell, rows[block.markerRow][0])
+						err = f.SetCellValue(sheetName, dstCell, rows[block.markerRow][0])
+						if err != nil {
+							log.Print(err.Error())
+						}
 					}
 					copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
 					currentRow++
 				}
 
-				// Пустая строка
-				currentRow++
+				currentRow++ // Пустая строка
 
-				// Таблица
 				for rowIdx := block.tableStart; rowIdx <= block.tableEnd && rowIdx < len(rows); rowIdx++ {
 					if len(rows[rowIdx]) > 0 {
 						for colIdx := 0; colIdx < len(rows[rowIdx]) && colIdx < 5; colIdx++ {
 							if rows[rowIdx][colIdx] != "" {
-								srcCell, _ := excelize.CoordinatesToCellName(colIdx+1, rowIdx+1)
-								dstCell, _ := excelize.CoordinatesToCellName(colIdx+1, currentRow)
+								srcCell, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx+1)
+								if err != nil {
+									log.Print(err.Error())
+								}
+								dstCell, err := excelize.CoordinatesToCellName(colIdx+1, currentRow)
+								if err != nil {
+									log.Print(err.Error())
+								}
 
 								richText, err := sd.GetCellRichText(sheetName, srcCell)
 								if err == nil && len(richText) > 0 && strings.Contains(rows[rowIdx][colIdx], "c") {
-									f.SetCellRichText(sheetName, dstCell, richText)
+									err = f.SetCellRichText(sheetName, dstCell, richText)
+									if err != nil {
+										log.Print(err.Error())
+									}
 								} else {
-									f.SetCellValue(sheetName, dstCell, rows[rowIdx][colIdx])
+									err = f.SetCellValue(sheetName, dstCell, rows[rowIdx][colIdx])
+									if err != nil {
+										log.Print(err.Error())
+									}
 								}
 
 								copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
@@ -274,73 +321,73 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 					}
 				}
 
-				// c 2: в колонку F - через RichText
 				if block.c2Row > 0 && block.c2Row < len(rows) && len(rows[block.c2Row]) > 0 {
 					c2Row := currentRow - 1
-					srcCell, _ := excelize.CoordinatesToCellName(1, block.c2Row+1)
-					dstCell, _ := excelize.CoordinatesToCellName(6, c2Row)
+					srcCell, err := excelize.CoordinatesToCellName(1, block.c2Row+1)
+					if err != nil {
+						log.Print(err.Error())
+					}
+					dstCell, err := excelize.CoordinatesToCellName(6, c2Row)
+					if err != nil {
+						log.Print(err.Error())
+					}
 
 					richText, err := sd.GetCellRichText(sheetName, srcCell)
 					if err == nil && len(richText) > 0 {
-						f.SetCellRichText(sheetName, dstCell, richText)
+						err = f.SetCellRichText(sheetName, dstCell, richText)
+						if err != nil {
+							log.Print(err.Error())
+						}
 					} else {
-						f.SetCellValue(sheetName, dstCell, rows[block.c2Row][0])
+						err = f.SetCellValue(sheetName, dstCell, rows[block.c2Row][0])
+						if err != nil {
+							log.Print(err.Error())
+						}
 					}
 					copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
 				}
 
-				// Пустая строка после блока
-				currentRow++
+				currentRow++ // Пустая строка после блока
 			}
-		} else {
-			// ============ ЕСЛИ НЕТ БЛОКОВ (latex с 1 файлом) ============
-			log.Printf("%s: Нет блоков, копируем данные напрямую", sheetName)
 
-			// Находим маркер File:
-			var fileMarker string
+		} else { // Если только 1 файл
+
+			var fileMarker string // Находим маркер File:
 			var fileMarkerRow int
 			for rowNum := startReadingRow; rowNum < len(rows); rowNum++ {
 				if len(rows[rowNum]) > 0 && strings.Contains(rows[rowNum][0], "File: ") {
 					fileMarker = rows[rowNum][0]
 					fileMarkerRow = rowNum
-					log.Printf("%s: Найден маркер File: в строке %d: %s", sheetName, rowNum, fileMarker)
 					break
 				}
 			}
 
-			// Если маркер не найден, ищем в строках до startReadingRow
-			if fileMarker == "" {
+			if fileMarker == "" { // Если маркер не найден, ищем в строках до startReadingRow
 				for rowNum := 0; rowNum < startReadingRow; rowNum++ {
 					if len(rows[rowNum]) > 0 && strings.Contains(rows[rowNum][0], "File: ") {
 						fileMarker = rows[rowNum][0]
 						fileMarkerRow = rowNum
-						log.Printf("%s: Найден маркер File: в строке %d (до startReadingRow): %s", sheetName, rowNum, fileMarker)
 						break
 					}
 				}
 			}
 
-			// Находим данные для latex (Distribution analysis и окружающие строки)
-			var dataRows []int
+			var dataRows []int // Находим данные
 			for rowNum := startReadingRow; rowNum < len(rows); rowNum++ {
 				if len(rows[rowNum]) > 0 && strings.Contains(rows[rowNum][0], "Distribution analysis") {
-					log.Printf("%s: Найдена Distribution analysis в строке %d", sheetName, rowNum)
 					for j := rowNum - 1; j <= rowNum+5 && j < len(rows); j++ {
 						if j >= startReadingRow {
 							dataRows = append(dataRows, j)
-							log.Printf("%s: Добавлена строка %d для заголовков", sheetName, j)
 						}
 					}
 					break
 				}
 			}
 
-			// Ищем таблицу
-			var tableStart, tableEnd, c2Row int
+			var tableStart, tableEnd, c2Row int // Ищем таблицу
 			for rowNum := startReadingRow; rowNum < len(rows); rowNum++ {
 				if len(rows[rowNum]) > 0 && strings.Contains(rows[rowNum][0], "Peak Num") {
 					tableStart = rowNum
-					log.Printf("%s: Найдена таблица в строке %d", sheetName, rowNum)
 					for j := tableStart + 1; j < len(rows); j++ {
 						if len(rows[j]) == 0 {
 							continue
@@ -348,7 +395,6 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 						if strings.HasPrefix(rows[j][0], "c") {
 							c2Row = j
 							tableEnd = j - 1
-							log.Printf("%s: Найдена c 2: в строке %d, конец таблицы %d", sheetName, c2Row, tableEnd)
 							break
 						}
 					}
@@ -357,41 +403,59 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 			}
 
 			if tableStart > 0 && fileMarker != "" {
-				log.Printf("%s: Начинаем запись данных для latex", sheetName)
 
-				// 1. Добавляем пустую строку перед маркером (как в основной логике)
-				currentRow++
+				currentRow++ // Добавляем пустую строку
 
-				// 2. Записываем маркер File:
-				srcCell, _ := excelize.CoordinatesToCellName(1, fileMarkerRow+1)
-				dstCell, _ := excelize.CoordinatesToCellName(1, currentRow)
+				srcCell, err := excelize.CoordinatesToCellName(1, fileMarkerRow+1)
+				if err != nil {
+					log.Print(err.Error())
+				}
+				dstCell, err := excelize.CoordinatesToCellName(1, currentRow)
+				if err != nil {
+					log.Print(err.Error())
+				}
 
 				richText, err := sd.GetCellRichText(sheetName, srcCell)
 				if err == nil && len(richText) > 0 {
-					f.SetCellRichText(sheetName, dstCell, richText)
+					err = f.SetCellRichText(sheetName, dstCell, richText)
+					if err != nil {
+						log.Print(err.Error())
+					}
 				} else {
-					f.SetCellValue(sheetName, dstCell, fileMarker)
+					err = f.SetCellValue(sheetName, dstCell, fileMarker)
+					if err != nil {
+						log.Print(err.Error())
+					}
 				}
 				copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
 				currentRow++
-				log.Printf("%s: Записан маркер в строку %d", sheetName, currentRow-1)
 
-				// 3. Пустая строка после маркера
-				currentRow++
+				currentRow++ // Добавляем пустую строку
 
-				// 4. Записываем заголовки (Distribution analysis...)
-				for _, rowIdx := range dataRows {
+				for _, rowIdx := range dataRows { // Записываем заголовки
 					if rowIdx < len(rows) {
 						for colIdx := 0; colIdx < 5 && colIdx < len(rows[rowIdx]); colIdx++ {
 							if rows[rowIdx][colIdx] != "" {
-								srcCell, _ := excelize.CoordinatesToCellName(colIdx+1, rowIdx+1)
-								dstCell, _ := excelize.CoordinatesToCellName(colIdx+1, currentRow)
+								srcCell, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx+1)
+								if err != nil {
+									log.Print(err.Error())
+								}
+								dstCell, err := excelize.CoordinatesToCellName(colIdx+1, currentRow)
+								if err != nil {
+									log.Print(err.Error())
+								}
 
 								richText, err := sd.GetCellRichText(sheetName, srcCell)
 								if err == nil && len(richText) > 0 {
-									f.SetCellRichText(sheetName, dstCell, richText)
+									err = f.SetCellRichText(sheetName, dstCell, richText)
+									if err != nil {
+										log.Print(err.Error())
+									}
 								} else {
-									f.SetCellValue(sheetName, dstCell, rows[rowIdx][colIdx])
+									err = f.SetCellValue(sheetName, dstCell, rows[rowIdx][colIdx])
+									if err != nil {
+										log.Print(err.Error())
+									}
 								}
 								copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
 							}
@@ -400,22 +464,35 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 					}
 				}
 
-				// 5. Пустая строка после заголовков
-				currentRow++
+				currentRow++ // Добавляем пустую строку
 
-				// 6. Записываем таблицу
 				for rowIdx := tableStart; rowIdx <= tableEnd && rowIdx < len(rows); rowIdx++ {
 					if len(rows[rowIdx]) > 0 {
 						for colIdx := 0; colIdx < len(rows[rowIdx]) && colIdx < 5; colIdx++ {
 							if rows[rowIdx][colIdx] != "" {
-								srcCell, _ := excelize.CoordinatesToCellName(colIdx+1, rowIdx+1)
-								dstCell, _ := excelize.CoordinatesToCellName(colIdx+1, currentRow)
+								srcCell, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx+1)
+								if err != nil {
+									log.Print(err.Error())
+								}
+								dstCell, err := excelize.CoordinatesToCellName(colIdx+1, currentRow)
+								if err != nil {
+									log.Print(err.Error())
+								}
 
 								richText, err := sd.GetCellRichText(sheetName, srcCell)
-								if err == nil && len(richText) > 0 && strings.Contains(rows[rowIdx][colIdx], "c") {
-									f.SetCellRichText(sheetName, dstCell, richText)
+								if err == nil && len(richText) > 0 &&
+									strings.Contains(rows[rowIdx][colIdx], "c") {
+
+									err = f.SetCellRichText(sheetName, dstCell, richText)
+									if err != nil {
+										log.Print(err.Error())
+									}
+
 								} else {
-									f.SetCellValue(sheetName, dstCell, rows[rowIdx][colIdx])
+									err = f.SetCellValue(sheetName, dstCell, rows[rowIdx][colIdx])
+									if err != nil {
+										log.Print(err.Error())
+									}
 								}
 								copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
 							}
@@ -424,45 +501,90 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 					}
 				}
 
-				// 7. c 2: в колонку F
 				if c2Row > 0 && c2Row < len(rows) && len(rows[c2Row]) > 0 {
 					c2RowDst := currentRow - 1
-					srcCell, _ := excelize.CoordinatesToCellName(1, c2Row+1)
-					dstCell, _ := excelize.CoordinatesToCellName(6, c2RowDst)
+					srcCell, err := excelize.CoordinatesToCellName(1, c2Row+1)
+					if err != nil {
+						log.Print(err.Error())
+					}
+					dstCell, err := excelize.CoordinatesToCellName(6, c2RowDst)
+					if err != nil {
+						log.Print(err.Error())
+					}
 
 					richText, err := sd.GetCellRichText(sheetName, srcCell)
 					if err == nil && len(richText) > 0 {
-						f.SetCellRichText(sheetName, dstCell, richText)
+						err = f.SetCellRichText(sheetName, dstCell, richText)
+						if err != nil {
+							log.Print(err.Error())
+						}
 					} else {
-						f.SetCellValue(sheetName, dstCell, rows[c2Row][0])
+						err = f.SetCellValue(sheetName, dstCell, rows[c2Row][0])
+						if err != nil {
+							log.Print(err.Error())
+						}
 					}
 					copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
 				}
-
-				log.Printf("%s: Запись данных для latex завершена", sheetName)
 			}
 		}
 
-		// Устанавливаем ширину колонок
-		f.SetColWidth(sheetName, "A", "A", 23.14)
-		f.SetColWidth(sheetName, "F", "F", 15)
+		err = f.SetCellValue(sheetName, "D13", "Mean intensity")
+		if err != nil {
+			log.Print(err.Error())
+		}
+		err = f.SetCellValue(sheetName, "E13", "Rate of correct unit")
+		if err != nil {
+			log.Print(err.Error())
+		}
+
+		for i := 0; true; i++ {
+
+			contCell, err := f.GetCellValue(sheetName, "A"+strconv.Itoa(i+14))
+			if err != nil {
+				log.Print(err.Error())
+			}
+
+			if contCell == "" {
+				break
+			}
+
+			contCell = strings.TrimPrefix(contCell, "¨ ")
+
+			err = f.SetCellValue(sheetName, "D"+strconv.Itoa(i+14), reportMatrix[contCell].MeanIntensity)
+			if err != nil {
+				log.Print(err.Error())
+			}
+			err = f.SetCellValue(sheetName, "E"+strconv.Itoa(i+14), reportMatrix[contCell].RateOfCorrectUnit)
+			if err != nil {
+				log.Print(err.Error())
+			}
+
+		}
+
+		err = f.SetColWidth(sheetName, "A", "A", 23.14)
+		if err != nil {
+			log.Print(err.Error())
+		}
+		err = f.SetColWidth(sheetName, "D", "F", 15)
+		if err != nil {
+			log.Print(err.Error())
+		}
 
 		f.SetActiveSheet(index)
+
 	}
 
-	// Переименовываем первый лист
 	err = f.SetSheetName("Sheet1", "пробоподготовка")
 	if err != nil {
 		log.Println("Ошибка переименовывания листа на \"пробоподготовка\"", err)
 	}
 
-	// Добавляем выводы
 	_, err = f.NewSheet("выводы")
 	if err != nil {
 		log.Print("Ошибка выводов: ", err)
 	}
 
-	// Сохраняем файл
 	err = f.SaveAs(resultFileName)
 	if err != nil {
 		log.Print("Ошибка сохранения: ", err)
@@ -490,5 +612,5 @@ func copyCellStyle(src, dst *excelize.File, srcSheet, dstSheet, srcCell, dstCell
 		return
 	}
 
-	dst.SetCellStyle(dstSheet, dstCell, dstCell, newStyleID)
+	_ = dst.SetCellStyle(dstSheet, dstCell, dstCell, newStyleID)
 }

@@ -47,8 +47,6 @@ func readFileList(filesFolder string) string {
 func createFile() string {
 	start := time.Now()
 
-	log.Print("Количество файлов: ", len(filesList))
-
 	_, weekNum := time.Now().ISOWeek()
 
 	resultFileName := "DLS_rlt_" + strconv.Itoa(weekNum) + "_" +

@@ -7,9 +7,7 @@ import (
 
 //rsrc -manifest photocore.manifest -o rsrc.syso
 
-//"C:\\Users\\user\\Desktop\\Photocor\\"
-
-var filesFolder = "C:\\Users\\Lekko\\Documents\\фотокор\\" +
+var filesFolder = "C:\\Users\\user\\Desktop\\Photocor\\" +
 	strconv.Itoa(time.Now().Year()) + "\\" +
 	todayMonth() + "\\" +
 	time.Now().Format("020106")
