@@ -84,6 +84,10 @@ func GUI() {
 	if err != nil {
 		log.Panic(err.Error())
 	}
+	err = statusSearch.SetText("Найденные файлы: " + strconv.Itoa(countOfFiles))
+	if err != nil {
+		log.Panic(err.Error())
+	}
 
 	mw.Run()
 }

@@ -7,13 +7,16 @@ import (
 
 //rsrc -manifest photocore.manifest -o rsrc.syso
 
-var filesFolder = "C:\\Users\\user\\Desktop\\Photocor\\" +
-	strconv.Itoa(time.Now().Year()) + "\\" +
-	todayMonth() + "\\" +
-	time.Now().Format("020106")
-var countOfFiles int
+var (
+	filesFolder = "C:\\Users\\User1\\Desktop\\Photocor\\" +
+		strconv.Itoa(time.Now().Year()) + "\\" +
+		todayMonth() + "\\" +
+		time.Now().Format("020106")
+
+	countOfFiles int
+)
 
 func main() {
-	filesFolder = "C:\\Users\\Lekko\\Documents\\фотокор\\2026\\Июль\\160726"
+	//filesFolder = "C:\\Users\\Lekko\\Documents\\фотокор\\2026\\Июль\\160726"
 	GUI()
 }
