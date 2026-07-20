@@ -6,6 +6,7 @@ import (
 )
 
 //rsrc -manifest photocore.manifest -o rsrc.syso
+//rsrc -ico icon.ico -manifest photocore.manifest -o rsrc_windows_amd64.syso
 
 var (
 	filesFolder = "C:\\Users\\User1\\Desktop\\Photocor\\" +

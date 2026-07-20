@@ -18,14 +18,14 @@ func GUI() {
 		mw           *walk.MainWindow
 	)
 
-	//appIcon, _ := walk.NewIconFromResourceId(2)
+	appIcon, _ := walk.NewIconFromResourceId(2)
 
 	mainWindow := MainWindow{
 		AssignTo: &mw,
 		Title:    "DLS Фотокор",
-		//Icon:     appIcon,
-		Size:   Size{Width: 350, Height: 400},
-		Layout: VBox{},
+		Icon:     appIcon,
+		Size:     Size{Width: 350, Height: 400},
+		Layout:   VBox{},
 		Children: []Widget{
 
 			Label{Text: "Путь к папке:"},
