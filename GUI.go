@@ -31,43 +31,50 @@ func GUI() {
 			Label{Text: "Путь к папке:"},
 			LineEdit{AssignTo: &inputData, Text: filesFolder},
 
-			PushButton{
-				Text: "Повторить поиск",
-				OnClicked: func() {
-					countOfFiles = 0
+			HSplitter{
+				Children: []Widget{
+					PushButton{
+						MaxSize: Size{Width: 150, Height: 25},
+						Text:    "Повторить поиск",
+						OnClicked: func() {
+							countOfFiles = 0
+							filesFolder = inputData.Text()
 
-					filesFolder = inputData.Text()
+							err := statusLabel.SetText("Прочитаны файлы из " + filesFolder)
+							if err != nil {
+								log.Panic(err.Error())
+							}
 
-					err := statusLabel.SetText("Прочитаны файлы из " + filesFolder)
-					if err != nil {
-						log.Panic(err.Error())
-					}
+							err = statusFiles.SetText(readFileList(filesFolder))
+							if err != nil {
+								log.Panic(err.Error())
+							}
 
-					err = statusFiles.SetText(readFileList(filesFolder))
-					if err != nil {
-						log.Panic(err.Error())
-					}
-
-					err = statusSearch.SetText("Найденные файлы: " + strconv.Itoa(countOfFiles))
-					if err != nil {
-						log.Panic(err.Error())
-					}
+							err = statusSearch.SetText("Найденные файлы: " + strconv.Itoa(countOfFiles))
+							if err != nil {
+								log.Panic(err.Error())
+							}
+						},
+					},
+					PushButton{
+						MaxSize: Size{Width: 150, Height: 25},
+						Text:    "Создать .xlsx",
+						OnClicked: func() {
+							err := statusLabel.SetText("Идёт сборка файла .xlsx")
+							if err != nil {
+								log.Panic(err.Error())
+							}
+							err = statusLabel.SetText(createFile())
+							if err != nil {
+								log.Panic(err.Error())
+							}
+						},
+					},
 				},
 			},
 
 			Label{AssignTo: &statusSearch, Text: "Найденные файлы:"},
 			TextEdit{AssignTo: &statusFiles, ReadOnly: true, VScroll: true},
-
-			PushButton{
-				Text: "Создать .xlsx",
-				OnClicked: func() {
-					err := statusLabel.SetText("Файл " + createFile() + " успешно создан")
-					if err != nil {
-						log.Panic(err.Error())
-					}
-				},
-			},
-
 			Label{AssignTo: &statusLabel, Text: "Лёша лох"},
 		},
 	}

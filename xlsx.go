@@ -9,22 +9,25 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
+func xlsx(resultFileName string, reportMatrix map[string]SampleData) string {
 
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
 			log.Printf("Ошибка при создании файла %v", err)
+
 		}
 	}()
 
 	sd, err := excelize.OpenFile(filesFolder + "\\Сырые данные.xlsx")
 	if err != nil {
-		log.Panic("Ошибка открытия сырых данных", err)
+		log.Println("Ошибка открытия сырых данных", err)
+		return "Ошибка открытия сырых данных: " + err.Error()
 	}
 	defer func() {
 		if err := sd.Close(); err != nil {
 			log.Printf("Ошибка с файлом сырых данных %v", err)
+
 		}
 	}()
 
@@ -42,6 +45,7 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 		m, err := sd.GetMergeCells(sheetName, true)
 		if err != nil {
 			log.Print(err.Error())
+			return err.Error()
 		}
 		if len(m) < 2 {
 			log.Printf("Недостаточно объединенных ячеек для %s", sheetName)
@@ -53,10 +57,12 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 		col, row, err := excelize.CellNameToCoordinates(p2)
 		if err != nil {
 			log.Print(err.Error())
+			return err.Error()
 		}
 		p3, err := excelize.CoordinatesToCellName(col, row+1)
 		if err != nil {
 			log.Print(err.Error())
+			return err.Error()
 		}
 
 		picsCellSD := []string{p1, p2, p3} // Копируем графики
@@ -82,6 +88,7 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 				})
 				if err != nil {
 					log.Print("Ошибка вставки картинки: ", err)
+					return "Ошибка вставки картинки: " + err.Error()
 				}
 			}
 		}
@@ -95,6 +102,7 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 		_, startReadingRow, err := excelize.CellNameToCoordinates(p3)
 		if err != nil {
 			log.Print(err.Error())
+			return err.Error()
 		}
 
 		startReadingRow = startReadingRow + 3
@@ -106,6 +114,7 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 			srcCell, err := excelize.CoordinatesToCellName(1, rowNum)
 			if err != nil {
 				log.Print(err.Error())
+				return err.Error()
 			}
 
 			val, err := sd.GetCellValue(sheetName, srcCell)
@@ -120,22 +129,26 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 			richText, err := sd.GetCellRichText(sheetName, srcCell)
 			if err != nil {
 				log.Print(err.Error())
+				return err.Error()
 			}
 
 			dstCell, err := excelize.CoordinatesToCellName(1, currentRow)
 			if err != nil {
 				log.Print(err.Error())
+				return err.Error()
 			}
 
 			if len(richText) > 0 {
 				err = f.SetCellRichText(sheetName, dstCell, richText)
 				if err != nil {
 					log.Print(err.Error())
+					return err.Error()
 				}
 			} else {
 				err = f.SetCellValue(sheetName, dstCell, val)
 				if err != nil {
 					log.Print(err.Error())
+					return err.Error()
 				}
 			}
 
@@ -146,12 +159,14 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 		rowsAfterCopy, err := f.GetRows(sheetName)
 		if err != nil {
 			log.Print(err.Error())
+			return err.Error()
 		}
 		for i, row := range rowsAfterCopy {
 			if len(row) > 0 && strings.Contains(row[0], "File(s):") {
 				err = f.InsertRows(sheetName, i+2, 1) // Добавляем пустую строку после "File(s): ..."
 				if err != nil {
 					log.Print(err.Error())
+					return err.Error()
 				}
 				break
 			}
@@ -231,10 +246,12 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 							srcCell, err := excelize.CoordinatesToCellName(colIdx+1, headerRow+1)
 							if err != nil {
 								log.Print(err.Error())
+								return err.Error()
 							}
 							dstCell, err := excelize.CoordinatesToCellName(colIdx+1, currentRow)
 							if err != nil {
 								log.Print(err.Error())
+								return err.Error()
 							}
 
 							richText, err := sd.GetCellRichText(sheetName, srcCell)
@@ -242,11 +259,13 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 								err = f.SetCellRichText(sheetName, dstCell, richText)
 								if err != nil {
 									log.Print(err.Error())
+									return err.Error()
 								}
 							} else {
 								err = f.SetCellValue(sheetName, dstCell, rows[headerRow][colIdx])
 								if err != nil {
 									log.Print(err.Error())
+									return err.Error()
 								}
 							}
 							copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
@@ -264,10 +283,12 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 					srcCell, err := excelize.CoordinatesToCellName(1, block.markerRow+1)
 					if err != nil {
 						log.Print(err.Error())
+						return err.Error()
 					}
 					dstCell, err := excelize.CoordinatesToCellName(1, currentRow)
 					if err != nil {
 						log.Print(err.Error())
+						return err.Error()
 					}
 
 					richText, err := sd.GetCellRichText(sheetName, srcCell)
@@ -275,11 +296,13 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 						err = f.SetCellRichText(sheetName, dstCell, richText)
 						if err != nil {
 							log.Print(err.Error())
+							return err.Error()
 						}
 					} else {
 						err = f.SetCellValue(sheetName, dstCell, rows[block.markerRow][0])
 						if err != nil {
 							log.Print(err.Error())
+							return err.Error()
 						}
 					}
 					copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
@@ -295,10 +318,12 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 								srcCell, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx+1)
 								if err != nil {
 									log.Print(err.Error())
+									return err.Error()
 								}
 								dstCell, err := excelize.CoordinatesToCellName(colIdx+1, currentRow)
 								if err != nil {
 									log.Print(err.Error())
+									return err.Error()
 								}
 
 								richText, err := sd.GetCellRichText(sheetName, srcCell)
@@ -306,11 +331,13 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 									err = f.SetCellRichText(sheetName, dstCell, richText)
 									if err != nil {
 										log.Print(err.Error())
+										return err.Error()
 									}
 								} else {
 									err = f.SetCellValue(sheetName, dstCell, rows[rowIdx][colIdx])
 									if err != nil {
 										log.Print(err.Error())
+										return err.Error()
 									}
 								}
 
@@ -326,10 +353,12 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 					srcCell, err := excelize.CoordinatesToCellName(1, block.c2Row+1)
 					if err != nil {
 						log.Print(err.Error())
+						return err.Error()
 					}
 					dstCell, err := excelize.CoordinatesToCellName(6, c2Row)
 					if err != nil {
 						log.Print(err.Error())
+						return err.Error()
 					}
 
 					richText, err := sd.GetCellRichText(sheetName, srcCell)
@@ -337,11 +366,13 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 						err = f.SetCellRichText(sheetName, dstCell, richText)
 						if err != nil {
 							log.Print(err.Error())
+							return err.Error()
 						}
 					} else {
 						err = f.SetCellValue(sheetName, dstCell, rows[block.c2Row][0])
 						if err != nil {
 							log.Print(err.Error())
+							return err.Error()
 						}
 					}
 					copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
@@ -409,10 +440,12 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 				srcCell, err := excelize.CoordinatesToCellName(1, fileMarkerRow+1)
 				if err != nil {
 					log.Print(err.Error())
+					return err.Error()
 				}
 				dstCell, err := excelize.CoordinatesToCellName(1, currentRow)
 				if err != nil {
 					log.Print(err.Error())
+					return err.Error()
 				}
 
 				richText, err := sd.GetCellRichText(sheetName, srcCell)
@@ -420,11 +453,13 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 					err = f.SetCellRichText(sheetName, dstCell, richText)
 					if err != nil {
 						log.Print(err.Error())
+						return err.Error()
 					}
 				} else {
 					err = f.SetCellValue(sheetName, dstCell, fileMarker)
 					if err != nil {
 						log.Print(err.Error())
+						return err.Error()
 					}
 				}
 				copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
@@ -439,10 +474,12 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 								srcCell, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx+1)
 								if err != nil {
 									log.Print(err.Error())
+									return err.Error()
 								}
 								dstCell, err := excelize.CoordinatesToCellName(colIdx+1, currentRow)
 								if err != nil {
 									log.Print(err.Error())
+									return err.Error()
 								}
 
 								richText, err := sd.GetCellRichText(sheetName, srcCell)
@@ -450,11 +487,13 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 									err = f.SetCellRichText(sheetName, dstCell, richText)
 									if err != nil {
 										log.Print(err.Error())
+										return err.Error()
 									}
 								} else {
 									err = f.SetCellValue(sheetName, dstCell, rows[rowIdx][colIdx])
 									if err != nil {
 										log.Print(err.Error())
+										return err.Error()
 									}
 								}
 								copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
@@ -473,10 +512,12 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 								srcCell, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx+1)
 								if err != nil {
 									log.Print(err.Error())
+									return err.Error()
 								}
 								dstCell, err := excelize.CoordinatesToCellName(colIdx+1, currentRow)
 								if err != nil {
 									log.Print(err.Error())
+									return err.Error()
 								}
 
 								richText, err := sd.GetCellRichText(sheetName, srcCell)
@@ -486,12 +527,14 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 									err = f.SetCellRichText(sheetName, dstCell, richText)
 									if err != nil {
 										log.Print(err.Error())
+										return err.Error()
 									}
 
 								} else {
 									err = f.SetCellValue(sheetName, dstCell, rows[rowIdx][colIdx])
 									if err != nil {
 										log.Print(err.Error())
+										return err.Error()
 									}
 								}
 								copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
@@ -506,10 +549,12 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 					srcCell, err := excelize.CoordinatesToCellName(1, c2Row+1)
 					if err != nil {
 						log.Print(err.Error())
+						return err.Error()
 					}
 					dstCell, err := excelize.CoordinatesToCellName(6, c2RowDst)
 					if err != nil {
 						log.Print(err.Error())
+						return err.Error()
 					}
 
 					richText, err := sd.GetCellRichText(sheetName, srcCell)
@@ -517,11 +562,13 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 						err = f.SetCellRichText(sheetName, dstCell, richText)
 						if err != nil {
 							log.Print(err.Error())
+							return err.Error()
 						}
 					} else {
 						err = f.SetCellValue(sheetName, dstCell, rows[c2Row][0])
 						if err != nil {
 							log.Print(err.Error())
+							return err.Error()
 						}
 					}
 					copyCellStyle(sd, f, sheetName, sheetName, srcCell, dstCell)
@@ -532,10 +579,12 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 		err = f.SetCellValue(sheetName, "D13", "Mean intensity")
 		if err != nil {
 			log.Print(err.Error())
+			return err.Error()
 		}
 		err = f.SetCellValue(sheetName, "E13", "Rate of correct unit")
 		if err != nil {
 			log.Print(err.Error())
+			return err.Error()
 		}
 
 		for i := 0; true; i++ {
@@ -543,6 +592,7 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 			contCell, err := f.GetCellValue(sheetName, "A"+strconv.Itoa(i+14))
 			if err != nil {
 				log.Print(err.Error())
+				return err.Error()
 			}
 
 			if contCell == "" {
@@ -554,10 +604,12 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 			err = f.SetCellValue(sheetName, "D"+strconv.Itoa(i+14), reportMatrix[contCell].MeanIntensity)
 			if err != nil {
 				log.Print(err.Error())
+				return err.Error()
 			}
 			err = f.SetCellValue(sheetName, "E"+strconv.Itoa(i+14), reportMatrix[contCell].RateOfCorrectUnit)
 			if err != nil {
 				log.Print(err.Error())
+				return err.Error()
 			}
 
 		}
@@ -565,10 +617,12 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 		err = f.SetColWidth(sheetName, "A", "A", 23.14)
 		if err != nil {
 			log.Print(err.Error())
+			return err.Error()
 		}
 		err = f.SetColWidth(sheetName, "D", "F", 15)
 		if err != nil {
 			log.Print(err.Error())
+			return err.Error()
 		}
 
 		f.SetActiveSheet(index)
@@ -578,17 +632,22 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) {
 	err = f.SetSheetName("Sheet1", "пробоподготовка")
 	if err != nil {
 		log.Println("Ошибка переименовывания листа на \"пробоподготовка\"", err)
+		return "Ошибка переименовывания листа на \"пробоподготовка\"" + err.Error()
 	}
 
 	_, err = f.NewSheet("выводы")
 	if err != nil {
 		log.Print("Ошибка выводов: ", err)
+		return "Ошибка выводов: " + err.Error()
 	}
 
 	err = f.SaveAs(resultFileName)
 	if err != nil {
 		log.Print("Ошибка сохранения: ", err)
+		return "Ошибка сохранения: " + err.Error()
 	}
+
+	return "Файл " + resultFileName + " успешно создан"
 }
 
 // Копирование стиля между файлами

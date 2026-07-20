@@ -52,10 +52,8 @@ func createFile() string {
 	resultFileName := "DLS_rlt_" + strconv.Itoa(weekNum) + "_" +
 		time.Now().Format("02012006") + "_s_" + ".xlsx"
 
-	xlsx(resultFileName, reportMatrix)
-
 	log.Print("Создание файла: ", time.Since(start))
-	return resultFileName
+	return xlsx(resultFileName, reportMatrix)
 }
 
 // Разбивает массив имён файлов в формат для вывода
