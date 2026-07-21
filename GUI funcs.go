@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -46,14 +47,14 @@ func readFileList(filesFolder string) string {
 // Создаёт .xlsx файл
 func createFile() string {
 	start := time.Now()
+	defer func() { log.Print("Создание файла: ", time.Since(start)) }()
 
 	_, weekNum := time.Now().ISOWeek()
 
 	resultFileName := "DLS_rlt_" + strconv.Itoa(weekNum) + "_" +
 		time.Now().Format("02012006") + "_s_" + ".xlsx"
 
-	log.Print("Создание файла: ", time.Since(start))
-	return xlsx(resultFileName, reportMatrix)
+	return xlsx(resultFileName, reportMatrix) + "\nСобрано за " + fmt.Sprint(time.Since(start))
 }
 
 // Разбивает массив имён файлов в формат для вывода
