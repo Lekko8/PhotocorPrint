@@ -1,21 +1,29 @@
 package main
 
 import (
+	"log"
+	"os/user"
 	"strconv"
+	"strings"
 	"time"
 )
 
 //rsrc -manifest photocore.manifest -o rsrc.syso
-//rsrc -ico icon.ico -manifest photocore.manifest -o rsrc_windows_amd64.syso
 
-var (
-	filesFolder = "C:\\Users\\User1\\Desktop\\Photocor\\" +
-		strconv.Itoa(time.Now().Year()) + "\\" +
-		todayMonth() + "\\" +
-		time.Now().Format("020106")
+func getUserName() string {
+	corUse, err := user.Current()
+	if err != nil {
+		log.Print(err.Error())
+		return ""
+	}
+	return strings.Split(corUse.Username, "\\")[1]
+}
 
-	countOfFiles int
-)
+var filesFolder = "C:\\Users\\" + getUserName() + "\\Desktop\\Photocor\\" +
+	strconv.Itoa(time.Now().Year()) + "\\" +
+	todayMonth() + "\\" +
+	time.Now().Format("020106")
+var countOfFiles int
 
 func main() {
 	//filesFolder = "C:\\Users\\Lekko\\Documents\\фотокор\\2026\\Июль\\160726"

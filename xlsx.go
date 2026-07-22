@@ -29,10 +29,11 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) string {
 		}
 	}()
 
-	picsCellsF := []string{"G13", "N13", "N24"}
+	picsCellsF := []string{"G10", "L10", "L18"}
 
 	for idx := range groupsList {
 		sheetName := groupsList[idx]
+		log.Println(sheetName)
 
 		index, err := f.NewSheet(sheetName)
 		if err != nil {
@@ -42,7 +43,7 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) string {
 
 		m, err := sd.GetMergeCells(sheetName, true)
 		if err != nil {
-			log.Print(err.Error())
+			log.Print("GetMergeCells:", err.Error())
 			return err.Error()
 		}
 		if len(m) < 2 {
@@ -82,7 +83,11 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) string {
 				err = f.AddPictureFromBytes(sheetName, picsCellsF[i], &excelize.Picture{
 					Extension: pic.Extension,
 					File:      pic.File,
-					Format:    pic.Format,
+					Format: &excelize.GraphicOptions{
+						ScaleX:          0.7,
+						ScaleY:          0.7,
+						LockAspectRatio: true,
+					},
 				})
 				if err != nil {
 					log.Print("Ошибка вставки картинки: ", err)

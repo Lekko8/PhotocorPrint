@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -18,8 +19,8 @@ type WorkerResult struct {
 // SampleData данные из файла
 type SampleData struct {
 	Group             string
-	MeanIntensity     string
-	RateOfCorrectUnit string
+	MeanIntensity     float64
+	RateOfCorrectUnit int64
 }
 
 // Запускает горутины чтения .TXT файлов и собирает все данные в WorkerResult
@@ -61,6 +62,7 @@ func initDataRead() (map[string]SampleData, []string) {
 		groupsList = append(groupsList, group)
 	}
 	slices.Sort(groupsList)
+	log.Println(groupsList)
 
 	return reportMatrix, groupsList
 }
@@ -105,7 +107,18 @@ func readFile(fileName string) (SampleData, error) {
 }
 
 func forData(fileName, mean, line string) SampleData {
+
+	meanF, err := strconv.ParseFloat(strings.TrimSpace(mean), 64)
+	if err != nil {
+		log.Print(err)
+	}
+
+	rateOf, err := strconv.ParseInt(strings.TrimSuffix(strings.TrimSpace(line), "."), 0, 64)
+	if err != nil {
+		log.Print(err)
+	}
+
 	return SampleData{strings.Split(fileName, "_")[0],
-		strings.TrimSpace(mean),
-		strings.TrimSpace(line)}
+		meanF,
+		rateOf}
 }
