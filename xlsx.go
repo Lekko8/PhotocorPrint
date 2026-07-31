@@ -9,6 +9,7 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+// Собирает .xlsx файл (с 115 строки частично сгенерировано ИИ)
 func xlsx(resultFileName string, reportMatrix map[string]SampleData) string {
 
 	f := excelize.NewFile()
@@ -302,7 +303,7 @@ func xlsx(resultFileName string, reportMatrix map[string]SampleData) string {
 				currentRow++
 			}
 
-			// c 2: в колонку F
+			// x2: в колонку F
 			if block.c2Row > 0 && block.c2Row < len(rows) && len(rows[block.c2Row]) > 0 {
 				c2Row := currentRow - 1
 				srcCell, _ := excelize.CoordinatesToCellName(1, block.c2Row+1)

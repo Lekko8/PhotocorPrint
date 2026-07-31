@@ -106,6 +106,7 @@ func readFile(fileName string) (SampleData, error) {
 	return forData(fileName, "", ""), err
 }
 
+// Обрабатывает прочитанные данные
 func forData(fileName, mean, line string) SampleData {
 
 	meanF, err := strconv.ParseFloat(strings.TrimSpace(mean), 64)
