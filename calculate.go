@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -162,7 +163,7 @@ func doublePeak(f *excelize.File, sheetName string) {
 
 		if len(table) == 1 {
 			firstPeaks = append(firstPeaks, positions[0])
-			secondPeaks = append(secondPeaks, 0.0)
+			secondPeaks = append(secondPeaks, 0)
 			continue
 		}
 
@@ -199,7 +200,7 @@ func doublePeak(f *excelize.File, sheetName string) {
 				continue
 			} else {
 				firstPeaks = append(firstPeaks, firstPeak)
-				secondPeaks = append(secondPeaks, 0.0)
+				secondPeaks = append(secondPeaks, 0)
 				continue
 			}
 
@@ -211,7 +212,7 @@ func doublePeak(f *excelize.File, sheetName string) {
 			continue
 		} else {
 			firstPeaks = append(firstPeaks, firstPeak)
-			secondPeaks = append(secondPeaks, 0.0)
+			secondPeaks = append(secondPeaks, 0)
 			continue
 		}
 
@@ -387,7 +388,7 @@ func addTable(f *excelize.File, sheetName string, cell string, n int, data []flo
 			log.Print(err.Error())
 		}
 
-		if d == 0.0 {
+		if d == 0 {
 			err = f.SetCellValue(sheetName, cell, "-")
 			if err != nil {
 				log.Print(err.Error())
@@ -411,7 +412,7 @@ func addTable(f *excelize.File, sheetName string, cell string, n int, data []flo
 			log.Print(err.Error())
 		}
 
-		if d == 0.0 {
+		if d == 0 {
 			err = f.SetCellValue(sheetName, cell, "-")
 			if err != nil {
 				log.Print(err.Error())
@@ -436,7 +437,25 @@ func addTable(f *excelize.File, sheetName string, cell string, n int, data []flo
 
 	merge(f, sheetName, column, 0, row, l)
 
-	setFormula(f, sheetName, "AVERAGE", column, row, column-1, 0, row, l)
+	var dataCells []string
+
+	if slices.Contains(data, 0) {
+		for i, d := range data {
+			if d != 0 {
+				dataCell, err := excelize.CoordinatesToCellName(column-1, row+i)
+				if err != nil {
+					log.Print(err.Error())
+				}
+				dataCells = append(dataCells, dataCell)
+			}
+		}
+	}
+
+	if dataCells != nil {
+		setFormula(f, sheetName, "STDEV", column, row, dataCells)
+	} else {
+		setFormulaGap(f, sheetName, "AVERAGE", column, row, column-1, 0, row, l)
+	}
 
 	column++ // SD
 
@@ -447,7 +466,11 @@ func addTable(f *excelize.File, sheetName string, cell string, n int, data []flo
 
 	merge(f, sheetName, column, 0, row, l)
 
-	setFormula(f, sheetName, "STDEV", column, row, column-2, 0, row, l)
+	if dataCells != nil {
+		setFormula(f, sheetName, "STDEV", column, row, dataCells)
+	} else {
+		setFormulaGap(f, sheetName, "STDEV", column, row, column-2, 0, row, l)
+	}
 
 	column++ // CV
 
@@ -481,7 +504,7 @@ func addTable(f *excelize.File, sheetName string, cell string, n int, data []flo
 
 	//log.Print("AVERAGE in ", column, row)
 
-	setFormula(f, sheetName, "AVERAGE", column, row, column, 0, row-l-1, l)
+	setFormulaGap(f, sheetName, "AVERAGE", column, row, column, 0, row-l-1, l)
 
 	cell, err = excelize.CoordinatesToCellName(column, row)
 	if err != nil {
@@ -528,7 +551,7 @@ func merge(f *excelize.File, sheetName string, column, cl, row, rl int) {
 	}
 }
 
-func setFormula(f *excelize.File, sheetName, formula string, column, row, dataColumn, dcl, dataRow, drl int) {
+func setFormulaGap(f *excelize.File, sheetName, formula string, column, row, dataColumn, dcl, dataRow, drl int) {
 	fCell, err := excelize.CoordinatesToCellName(column, row)
 	if err != nil {
 		log.Print(err.Error())
@@ -553,6 +576,20 @@ func setFormula(f *excelize.File, sheetName, formula string, column, row, dataCo
 	resultFormula.WriteString(")")
 
 	err = f.SetCellFormula(sheetName, fCell, resultFormula.String())
+	if err != nil {
+		log.Print(err.Error())
+	}
+}
+
+func setFormula(f *excelize.File, sheetName, formula string, column, row int, dataCells []string) {
+	fCell, err := excelize.CoordinatesToCellName(column, row)
+	if err != nil {
+		log.Print(err.Error())
+	}
+
+	resultFormula := formula + "(" + strings.Join(dataCells, ";") + ")"
+
+	err = f.SetCellFormula(sheetName, fCell, resultFormula)
 	if err != nil {
 		log.Print(err.Error())
 	}
