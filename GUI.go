@@ -11,10 +11,11 @@ import (
 func GUI() {
 
 	var (
-		inputData    *walk.LineEdit
+		inputFolder  *walk.LineEdit
+		inputName    *walk.LineEdit
 		statusFiles  *walk.TextEdit
 		statusSearch *walk.Label
-		statusLabel  *walk.Label
+		statusProg   *walk.TextEdit
 		mw           *walk.MainWindow
 	)
 
@@ -22,25 +23,35 @@ func GUI() {
 
 	mainWindow := MainWindow{
 		AssignTo: &mw,
-		Title:    "DLS Фотокор",
+		Title:    "DLS Фотокор | версия от 26.08.2026",
 		Icon:     appIcon,
-		Size:     Size{Width: 350, Height: 400},
+		Size:     Size{Width: 400, Height: 400},
+		MinSize:  Size{Width: 400, Height: 400},
 		Layout:   VBox{},
 		Children: []Widget{
 
-			Label{Text: "Путь к папке:"},
-			LineEdit{AssignTo: &inputData, Text: filesFolder},
+			HSplitter{
+				Children: []Widget{
+					Label{Text: "Путь к папке:"},
+					LineEdit{
+						AssignTo: &inputFolder,
+						Text:     filesFolder,
+						MaxSize:  Size{Width: 300, Height: 25},
+					},
+				},
+			},
 
 			HSplitter{
 				Children: []Widget{
 					PushButton{
-						MaxSize: Size{Width: 150, Height: 25},
+						MinSize: Size{Width: 30, Height: 25},
+						MaxSize: Size{Width: 120, Height: 25},
 						Text:    "Повторить поиск",
 						OnClicked: func() {
 							countOfFiles = 0
-							filesFolder = inputData.Text()
+							filesFolder = inputFolder.Text()
 
-							err := statusLabel.SetText("Прочитаны файлы из " + filesFolder)
+							err := statusProg.SetText("Прочитаны файлы из:\r\n" + filesFolder)
 							if err != nil {
 								log.Panic(err.Error())
 							}
@@ -56,15 +67,42 @@ func GUI() {
 							}
 						},
 					},
+					Label{Text: "Инициалы (в конец имени файла):"},
+					LineEdit{
+						AssignTo: &inputName,
+						MinSize:  Size{Width: 50, Height: 25},
+						MaxSize:  Size{Width: 50, Height: 25},
+					},
+				},
+			},
+
+			HSplitter{
+				Children: []Widget{
 					PushButton{
-						MaxSize: Size{Width: 150, Height: 25},
+						MaxSize: Size{Width: 100, Height: 25},
 						Text:    "Создать .xlsx",
 						OnClicked: func() {
-							err := statusLabel.SetText("Идёт сборка файла .xlsx")
+							err := statusProg.SetText("Идёт сборка файла .xlsx")
 							if err != nil {
 								log.Panic(err.Error())
 							}
-							err = statusLabel.SetText(createFile())
+							filesFolder = inputFolder.Text()
+							err = statusProg.SetText(createFile())
+							if err != nil {
+								log.Panic(err.Error())
+							}
+						},
+					},
+					PushButton{
+						MaxSize: Size{Width: 100, Height: 25},
+						Text:    "Обсчитать файлик",
+						OnClicked: func() {
+							err := statusProg.SetText("Обсчитываю... хихи")
+							if err != nil {
+								log.Panic(err.Error())
+							}
+							name := inputName.Text()
+							err = statusProg.SetText(calculate(createFileName(name)))
 							if err != nil {
 								log.Panic(err.Error())
 							}
@@ -75,7 +113,13 @@ func GUI() {
 
 			Label{AssignTo: &statusSearch, Text: "Найденные файлы:"},
 			TextEdit{AssignTo: &statusFiles, ReadOnly: true, VScroll: true},
-			Label{AssignTo: &statusLabel, Text: "Лёша лох"},
+			TextEdit{
+				AssignTo: &statusProg,
+				Text:     "Лёша лох",
+				MaxSize:  Size{Width: 300, Height: 40},
+				ReadOnly: true,
+				VScroll:  true,
+			},
 		},
 	}
 
@@ -83,7 +127,7 @@ func GUI() {
 		log.Fatal(err)
 	}
 
-	err := statusLabel.SetText("Прочитаны файлы из " + filesFolder) //запуск поиска на старте
+	err := statusProg.SetText("Прочитаны файлы из:\r\n" + filesFolder) //запуск поиска на старте
 	if err != nil {
 		log.Panic(err.Error())
 	}

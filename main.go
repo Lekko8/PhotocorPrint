@@ -19,13 +19,13 @@ func getUserName() string {
 	return strings.Split(corUse.Username, "\\")[1]
 }
 
-var filesFolder = "C:\\Users\\" + getUserName() + "\\Desktop\\Photocor\\" +
+var filesFolder = "C:\\Users\\" + getUserName() +
+	"\\Desktop\\Photocor\\" +
 	strconv.Itoa(time.Now().Year()) + "\\" +
 	todayMonth() + "\\" +
 	time.Now().Format("020106")
 var countOfFiles int
 
 func main() {
-	//filesFolder = "C:\\Users\\Lekko\\Documents\\фотокор\\2026\\Июль\\160726"
 	GUI()
 }

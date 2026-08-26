@@ -49,12 +49,20 @@ func createFile() string {
 	start := time.Now()
 	defer func() { log.Print("Создание файла: ", time.Since(start)) }()
 
+	return xlsx(createFileName(""), reportMatrix) + "\nСобрано за " + fmt.Sprint(time.Since(start))
+}
+
+func createFileName(add string) string {
 	_, weekNum := time.Now().ISOWeek()
-
-	resultFileName := "DLS_rlt_" + strconv.Itoa(weekNum) + "_" +
-		time.Now().Format("02012006") + "_s_" + ".xlsx"
-
-	return xlsx(resultFileName, reportMatrix) + "\nСобрано за " + fmt.Sprint(time.Since(start))
+	ans := strings.Builder{}
+	ans.WriteString("DLS_rlt_")
+	ans.WriteString(strconv.Itoa(weekNum))
+	ans.WriteString("_")
+	ans.WriteString(time.Now().Format("02012006"))
+	ans.WriteString("_s_")
+	ans.WriteString(add)
+	ans.WriteString(".xlsx")
+	return ans.String()
 }
 
 // Разбивает массив имён файлов в формат для вывода
