@@ -95,28 +95,7 @@ func singlePeak(f *excelize.File, sheetName string) {
 
 	//log.Print("resultSP: ", resultSP)
 
-	var rateOf []int
-	i := 13
-	r := rows[i][4]
-	for i < len(rows) {
-
-		//log.Print("row №", i, rows[i])
-
-		rate, err := strconv.Atoi(r)
-		if err != nil {
-			log.Print(err.Error())
-		}
-
-		rateOf = append(rateOf, rate)
-
-		i++
-
-		if len(rows[i]) < 2 {
-			break
-		}
-
-		r = rows[i][4]
-	}
+	rateOf := makeRateOf(rows)
 
 	//log.Print("rateOf: ", rateOf)
 
@@ -218,6 +197,19 @@ func doublePeak(f *excelize.File, sheetName string) {
 
 	}
 
+	rateOf := makeRateOf(rows)
+
+	//log.Print("rateOf: ", rateOf)
+
+	addTable(f, sheetName, "G26", 1, firstPeaks, rateOf)
+
+	addTable(f, sheetName, "O26", 2, secondPeaks, rateOf)
+
+	log.Print("doublePeak done in " + sheetName)
+}
+
+func makeRateOf(rows [][]string) []int {
+
 	var rateOf []int
 	i := 13
 	r := rows[i][4]
@@ -240,14 +232,7 @@ func doublePeak(f *excelize.File, sheetName string) {
 
 		r = rows[i][4]
 	}
-
-	//log.Print("rateOf: ", rateOf)
-
-	addTable(f, sheetName, "G26", 1, firstPeaks, rateOf)
-
-	addTable(f, sheetName, "O26", 2, secondPeaks, rateOf)
-
-	log.Print("doublePeak done in " + sheetName)
+	return rateOf
 }
 
 // Файл, лист, левая верхняя ячейка, номер пика (0 - единственный), данные, данные
