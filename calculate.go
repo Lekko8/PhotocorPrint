@@ -437,7 +437,7 @@ func addTable(f *excelize.File, sheetName string, cell string, n int, data []flo
 	}
 
 	if dataCells != nil {
-		setFormula(f, sheetName, "STDEV", column, row, dataCells)
+		setFormula(f, sheetName, "AVERAGE", column, row, dataCells)
 	} else {
 		setFormulaGap(f, sheetName, "AVERAGE", column, row, column-1, 0, row, l)
 	}
