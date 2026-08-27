@@ -4,24 +4,26 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-var filesList []string
-var reportMatrix = make(map[string]SampleData)
-var groupsList []string
+var (
+	filesList, groupsList []string
+	reportMatrix          = make(map[string]SampleData)
+)
 
 // Возвращает список файлов в массив имён и запускает чтение данных
-func readFileList(filesFolder string) string {
+func readFileList(filesFolder string, countOfFiles int) string {
 	start := time.Now()
 
 	defer func() {
 		if filesList != nil {
 			groupsList = groupsList[:0] // очищаем память (сохраняя ёмкость) для чистой перезаписи
-			reportMatrix, groupsList = initDataRead()
+			reportMatrix, groupsList = initDataRead(filesFolder)
 		}
 	}()
 
@@ -45,22 +47,26 @@ func readFileList(filesFolder string) string {
 }
 
 // Создаёт .xlsx файл
-func createFile() string {
+func createFile(filesFolder, order, name string) string {
 	start := time.Now()
 	defer func() { log.Print("Создание файла: ", time.Since(start)) }()
 
-	return xlsx(createFileName(""), reportMatrix) + "\nСобрано за " + fmt.Sprint(time.Since(start))
+	return xlsx(filesFolder, createFileName(order, name), reportMatrix) + "\r\nСобрано за " + fmt.Sprint(time.Since(start))
 }
 
-func createFileName(add string) string {
+func createFileName(order, name string) string {
 	_, weekNum := time.Now().ISOWeek()
 	ans := strings.Builder{}
 	ans.WriteString("DLS_rlt_")
 	ans.WriteString(strconv.Itoa(weekNum))
 	ans.WriteString("_")
-	ans.WriteString(time.Now().Format("02012006"))
+	ans.WriteString(time.Now().Format("060102"))
+	if order != "" {
+		ans.WriteString("_")
+		ans.WriteString(order)
+	}
 	ans.WriteString("_s_")
-	ans.WriteString(add)
+	ans.WriteString(name)
 	ans.WriteString(".xlsx")
 	return ans.String()
 }
@@ -78,4 +84,38 @@ func buildNames(files []string) string {
 		filenames.WriteString(file)
 	}
 	return filenames.String()
+}
+
+func getUserName() string {
+	corUse, err := user.Current()
+	if err != nil {
+		log.Print(err.Error())
+		return ""
+	}
+	return strings.Split(corUse.Username, "\\")[1]
+}
+
+// Вычисляет сегодняшний месяц
+func todayMonth() string {
+	now := time.Now()
+	return monthRu(now.Month())
+}
+
+// Переводит месяц на Ru
+func monthRu(month time.Month) string {
+	months := map[time.Month]string{
+		time.January:   "Январь",
+		time.February:  "Февраль",
+		time.March:     "Март",
+		time.April:     "Апрель",
+		time.May:       "Май",
+		time.June:      "Июнь",
+		time.July:      "Июль",
+		time.August:    "Август",
+		time.September: "Сентябрь",
+		time.October:   "Октябрь",
+		time.November:  "Ноябрь",
+		time.December:  "Декабрь",
+	}
+	return months[month]
 }

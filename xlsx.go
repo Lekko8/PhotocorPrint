@@ -10,7 +10,7 @@ import (
 )
 
 // Собирает .xlsx файл (с 115 строки частично сгенерировано ИИ)
-func xlsx(resultFileName string, reportMatrix map[string]SampleData) string {
+func xlsx(filesFolder, resultFileName string, reportMatrix map[string]SampleData) string {
 
 	f := excelize.NewFile()
 	defer func() {

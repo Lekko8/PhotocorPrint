@@ -3,14 +3,17 @@ package main
 import (
 	"log"
 	"os/exec"
-	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/xuri/excelize/v2"
 )
 
 func calculate(fileName string) string {
+
+	start := time.Now()
+	defer func() { log.Print("Обработка файла: ", time.Since(start)) }()
 
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
@@ -47,7 +50,7 @@ func calculate(fileName string) string {
 		log.Print(err.Error())
 	}
 
-	return "Посчитал " + fileName
+	return "Посчитал " + fileName + " за " + time.Since(start).String()
 }
 
 func singlePeak(f *excelize.File, sheetName string) {
@@ -62,7 +65,7 @@ func singlePeak(f *excelize.File, sheetName string) {
 	for i, row := range rows {
 		if len(row) > 0 && strings.Contains(row[0], "Peak Num") {
 			//log.Print(sheetName, "-", i)
-			DataTables = append(DataTables, makeTable(rows, i))
+			DataTables = append(DataTables, readTable(rows, i))
 		}
 	}
 
@@ -116,7 +119,7 @@ func doublePeak(f *excelize.File, sheetName string) {
 	for i, row := range rows {
 		if len(row) > 0 && strings.Contains(row[0], "Peak Num") {
 			//log.Print(sheetName, "-", i)
-			DataTables = append(DataTables, makeTable(rows, i))
+			DataTables = append(DataTables, readTable(rows, i))
 		}
 	}
 
@@ -235,10 +238,51 @@ func makeRateOf(rows [][]string) []int {
 	return rateOf
 }
 
-// Файл, лист, левая верхняя ячейка, номер пика (0 - единственный), данные, данные
-func addTable(f *excelize.File, sheetName string, cell string, n int, data []float64, rateOf []int) {
+func readTable(dataRows [][]string, i int) map[int]float64 {
 
+	var ans = make(map[int]float64)
+
+	i++
+	for i < len(dataRows) {
+
+		//log.Println(dataRows[i])
+
+		if len(dataRows[i]) == 0 {
+			break
+		}
+
+		if !strings.ContainsAny(dataRows[i][0], "0123456789") {
+			break
+		}
+
+		//log.Print(dataRows[i][1])
+
+		area, err := strconv.ParseFloat(strings.ReplaceAll(dataRows[i][1], ",", "."), 64)
+		if err != nil {
+			log.Print(err.Error())
+		}
+		a := int(area * 1000)
+
+		position, err := strconv.ParseFloat(strings.ReplaceAll(dataRows[i][3], ",", "."), 64)
+		if err != nil {
+			log.Print(err.Error())
+		}
+
+		ans[a] = position
+
+		i++
+
+	}
+	//log.Println("Finished makeTable: ", ans)
+	return ans
+}
+
+// Файл, лист, левая верхняя ячейка, номер пика (0 - единственный), данные, данные
+func addTable(f *excelize.File, sheetName string, rCell string, n int, data []float64, rateOf []int) {
+
+	decimalPlaces := 2
 	style, err := f.NewStyle(&excelize.Style{
+		DecimalPlaces: &decimalPlaces,
 		Alignment: &excelize.Alignment{
 			Horizontal: "center",
 			Vertical:   "center",
@@ -252,7 +296,6 @@ func addTable(f *excelize.File, sheetName string, cell string, n int, data []flo
 			{Type: "vertical", Color: "000000", Style: 1},
 		},
 	})
-
 	styleH, err := f.NewStyle(&excelize.Style{
 		Alignment: &excelize.Alignment{
 			Horizontal: "center",
@@ -288,11 +331,42 @@ func addTable(f *excelize.File, sheetName string, cell string, n int, data []flo
 			{Type: "vertical", Color: "000000", Style: 1},
 		},
 	})
+	styleRate, err := f.NewStyle(&excelize.Style{
+		NumFmt: 1,
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "horizontal", Color: "000000", Style: 1},
+			{Type: "vertical", Color: "000000", Style: 1},
+		},
+	})
+	CustomNumFmtSDS := "0.000"
+	styleDSD, err := f.NewStyle(&excelize.Style{
+		CustomNumFmt: &CustomNumFmtSDS,
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "horizontal", Color: "000000", Style: 1},
+			{Type: "vertical", Color: "000000", Style: 1},
+		},
+	})
 	if err != nil {
 		log.Print(err.Error())
 	}
 
-	column, row, err := excelize.CellNameToCoordinates(cell)
+	column, row, err := excelize.CellNameToCoordinates(rCell)
 	if err != nil {
 		log.Print(err.Error())
 	}
@@ -318,7 +392,7 @@ func addTable(f *excelize.File, sheetName string, cell string, n int, data []flo
 		tableHeadName = "PS пик " + strconv.Itoa(n)
 	}
 
-	err = f.SetCellStr(sheetName, cell, tableHeadName)
+	err = f.SetCellStr(sheetName, rCell, tableHeadName)
 	if err != nil {
 		log.Print(err.Error())
 	}
@@ -422,25 +496,7 @@ func addTable(f *excelize.File, sheetName string, cell string, n int, data []flo
 
 	merge(f, sheetName, column, 0, row, l)
 
-	var dataCells []string
-
-	if slices.Contains(data, 0) {
-		for i, d := range data {
-			if d != 0 {
-				dataCell, err := excelize.CoordinatesToCellName(column-1, row+i)
-				if err != nil {
-					log.Print(err.Error())
-				}
-				dataCells = append(dataCells, dataCell)
-			}
-		}
-	}
-
-	if dataCells != nil {
-		setFormula(f, sheetName, "AVERAGE", column, row, dataCells)
-	} else {
-		setFormulaGap(f, sheetName, "AVERAGE", column, row, column-1, 0, row, l)
-	}
+	setFormulaGap(f, sheetName, "AVERAGE", column, row, column-1, 0, row, l)
 
 	column++ // SD
 
@@ -451,11 +507,7 @@ func addTable(f *excelize.File, sheetName string, cell string, n int, data []flo
 
 	merge(f, sheetName, column, 0, row, l)
 
-	if dataCells != nil {
-		setFormula(f, sheetName, "STDEV", column, row, dataCells)
-	} else {
-		setFormulaGap(f, sheetName, "STDEV", column, row, column-2, 0, row, l)
-	}
+	setFormulaGap(f, sheetName, "STDEV", column, row, column-2, 0, row, l)
 
 	column++ // CV
 
@@ -491,17 +543,24 @@ func addTable(f *excelize.File, sheetName string, cell string, n int, data []flo
 
 	setFormulaGap(f, sheetName, "AVERAGE", column, row, column, 0, row-l-1, l)
 
-	cell, err = excelize.CoordinatesToCellName(column, row)
+	tlRCell, err := excelize.CoordinatesToCellName(column, row-l-1)
 	if err != nil {
 		log.Print(err.Error())
 	}
 
-	err = f.SetCellStyle(sheetName, cell, cell, style)
+	brRCell, err := excelize.CoordinatesToCellName(column, row)
 	if err != nil {
 		log.Print(err.Error())
 	}
+
+	log.Printf("%s: %s - %s", sheetName, tlRCell, brRCell)
 
 	err = f.SetCellStyle(sheetName, tlStyleCell, brStyleCell, style)
+	if err != nil {
+		log.Print(err.Error())
+	}
+
+	err = f.SetCellStyle(sheetName, tlRCell, brRCell, styleRate)
 	if err != nil {
 		log.Print(err.Error())
 	}
@@ -512,6 +571,11 @@ func addTable(f *excelize.File, sheetName string, cell string, n int, data []flo
 	}
 
 	err = f.SetCellStyle(sheetName, tlhCell, brhCell, styleH)
+	if err != nil {
+		log.Print(err.Error())
+	}
+
+	err = f.SetCellStyle(sheetName, dCell, sdCell, styleDSD)
 	if err != nil {
 		log.Print(err.Error())
 	}
@@ -566,55 +630,16 @@ func setFormulaGap(f *excelize.File, sheetName, formula string, column, row, dat
 	}
 }
 
-func setFormula(f *excelize.File, sheetName, formula string, column, row int, dataCells []string) {
-	fCell, err := excelize.CoordinatesToCellName(column, row)
-	if err != nil {
-		log.Print(err.Error())
-	}
-
-	resultFormula := formula + "(" + strings.Join(dataCells, ";") + ")"
-
-	err = f.SetCellFormula(sheetName, fCell, resultFormula)
-	if err != nil {
-		log.Print(err.Error())
-	}
-}
-
-func makeTable(dataRows [][]string, i int) map[int]float64 {
-
-	var ans = make(map[int]float64)
-
-	i++
-	for i < len(dataRows) {
-
-		//log.Println(dataRows[i])
-
-		if len(dataRows[i]) == 0 {
-			break
-		}
-
-		if !strings.ContainsAny(dataRows[i][0], "0123456789") {
-			break
-		}
-
-		//log.Print(dataRows[i][1])
-
-		area, err := strconv.ParseFloat(strings.ReplaceAll(dataRows[i][1], ",", "."), 64)
-		if err != nil {
-			log.Print(err.Error())
-		}
-		a := int(area * 1000)
-
-		position, err := strconv.ParseFloat(strings.ReplaceAll(dataRows[i][3], ",", "."), 64)
-		if err != nil {
-			log.Print(err.Error())
-		}
-
-		ans[a] = position
-
-		i++
-
-	}
-	//log.Println("Finished makeTable: ", ans)
-	return ans
-}
+//func setFormula(f *excelize.File, sheetName, formula string, column, row int, dataCells []string) {
+//	fCell, err := excelize.CoordinatesToCellName(column, row)
+//	if err != nil {
+//		log.Print(err.Error())
+//	}
+//
+//	resultFormula := formula + "(" + strings.Join(dataCells, ";") + ")"
+//
+//	err = f.SetCellFormula(sheetName, fCell, resultFormula)
+//	if err != nil {
+//		log.Print(err.Error())
+//	}
+//}

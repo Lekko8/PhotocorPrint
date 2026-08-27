@@ -24,7 +24,7 @@ type SampleData struct {
 }
 
 // Запускает горутины чтения .TXT файлов и собирает все данные в WorkerResult
-func initDataRead() (map[string]SampleData, []string) {
+func initDataRead(filesFolder string) (map[string]SampleData, []string) {
 
 	resultChan := make(chan WorkerResult, len(filesList))
 
@@ -35,7 +35,7 @@ func initDataRead() (map[string]SampleData, []string) {
 		go func(fileName string) {
 			defer wg.Done()
 
-			Data, Err := readFile(fileName)
+			Data, Err := readFile(fileName, filesFolder)
 
 			resultChan <- WorkerResult{FileName: fileName, Data: Data, Err: Err}
 
@@ -68,7 +68,7 @@ func initDataRead() (map[string]SampleData, []string) {
 }
 
 // Собирает данные из .TXT файла во временную мапу
-func readFile(fileName string) (SampleData, error) {
+func readFile(fileName, filesFolder string) (SampleData, error) {
 
 	txtFile, err := os.Open(filesFolder + "/" + fileName)
 

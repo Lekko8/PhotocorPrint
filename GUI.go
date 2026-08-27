@@ -8,10 +8,11 @@ import (
 	. "github.com/lxn/walk/declarative"
 )
 
-func GUI() {
+func GUI(version, filesFolder string, countOfFiles *int) {
 
 	var (
 		inputFolder  *walk.LineEdit
+		inputOrder   *walk.LineEdit
 		inputName    *walk.LineEdit
 		statusFiles  *walk.TextEdit
 		statusSearch *walk.Label
@@ -23,7 +24,7 @@ func GUI() {
 
 	mainWindow := MainWindow{
 		AssignTo: &mw,
-		Title:    "DLS Фотокор | версия от 26.08.2026",
+		Title:    "DLS Фотокор | " + version,
 		Icon:     appIcon,
 		Size:     Size{Width: 400, Height: 400},
 		MinSize:  Size{Width: 400, Height: 400},
@@ -48,7 +49,7 @@ func GUI() {
 						MaxSize: Size{Width: 120, Height: 25},
 						Text:    "Повторить поиск",
 						OnClicked: func() {
-							countOfFiles = 0
+							*countOfFiles = 0
 							filesFolder = inputFolder.Text()
 
 							err := statusProg.SetText("Прочитаны файлы из:\r\n" + filesFolder)
@@ -56,18 +57,24 @@ func GUI() {
 								log.Panic(err.Error())
 							}
 
-							err = statusFiles.SetText(readFileList(filesFolder))
+							err = statusFiles.SetText(readFileList(filesFolder, *countOfFiles))
 							if err != nil {
 								log.Panic(err.Error())
 							}
 
-							err = statusSearch.SetText("Найденные файлы: " + strconv.Itoa(countOfFiles))
+							err = statusSearch.SetText("Найденные файлы: " + strconv.Itoa(*countOfFiles))
 							if err != nil {
 								log.Panic(err.Error())
 							}
 						},
 					},
-					Label{Text: "Инициалы (в конец имени файла):"},
+					Label{Text: "Заказ:"},
+					LineEdit{
+						AssignTo: &inputOrder,
+						MinSize:  Size{Width: 80, Height: 25},
+						MaxSize:  Size{Width: 80, Height: 25},
+					},
+					Label{Text: "Инициалы:"},
 					LineEdit{
 						AssignTo: &inputName,
 						MinSize:  Size{Width: 50, Height: 25},
@@ -87,7 +94,9 @@ func GUI() {
 								log.Panic(err.Error())
 							}
 							filesFolder = inputFolder.Text()
-							err = statusProg.SetText(createFile())
+							order := inputOrder.Text()
+							name := inputName.Text()
+							err = statusProg.SetText(createFile(filesFolder, order, name))
 							if err != nil {
 								log.Panic(err.Error())
 							}
@@ -101,8 +110,9 @@ func GUI() {
 							if err != nil {
 								log.Panic(err.Error())
 							}
+							order := inputOrder.Text()
 							name := inputName.Text()
-							err = statusProg.SetText(calculate(createFileName(name)))
+							err = statusProg.SetText(calculate(createFileName(order, name)))
 							if err != nil {
 								log.Panic(err.Error())
 							}
@@ -131,11 +141,11 @@ func GUI() {
 	if err != nil {
 		log.Panic(err.Error())
 	}
-	err = statusFiles.SetText(readFileList(filesFolder))
+	err = statusFiles.SetText(readFileList(filesFolder, *countOfFiles))
 	if err != nil {
 		log.Panic(err.Error())
 	}
-	err = statusSearch.SetText("Найденные файлы: " + strconv.Itoa(countOfFiles))
+	err = statusSearch.SetText("Найденные файлы: " + strconv.Itoa(*countOfFiles))
 	if err != nil {
 		log.Panic(err.Error())
 	}
