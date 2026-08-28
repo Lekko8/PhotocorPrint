@@ -21,46 +21,139 @@ func calculate(fileName string) string {
 		return "Ошибка открытия файла " + fileName + ": " + err.Error()
 	}
 	defer func() {
+		if err := f.Save(); err != nil {
+			log.Print(err.Error())
+		}
 		if err := f.Close(); err != nil {
 			log.Print(err.Error())
 		}
+
+		cmd := exec.Command("cmd", "/c", "start", "", fileName)
+		if err := cmd.Start(); err != nil {
+			log.Print(err.Error())
+		}
 	}()
+
+	styles := getStyles(f)
+
+	addHeaderPage(f, styles)
 
 	for _, sheet := range f.GetSheetList() {
 		if strings.Contains(sheet, "PBS") ||
 			strings.Contains(sheet, "BSA") ||
 			strings.Contains(sheet, "latex") {
 
-			singlePeak(f, sheet)
+			singlePeak(f, sheet, styles)
 			continue
 		}
 		if strings.Contains(sheet, "Смесь") {
-			doublePeak(f, sheet)
+			doublePeak(f, sheet, styles)
 		}
 	}
 
-	err = f.Save()
-	if err != nil {
-		log.Print(err.Error())
-	}
-
-	cmd := exec.Command("cmd", "/c", "start", "", fileName)
-	err = cmd.Start()
-	if err != nil {
-		log.Print(err.Error())
-	}
+	addResults(f, styles)
 
 	return "Посчитал " + fileName + " за " + time.Since(start).String()
 }
 
-func singlePeak(f *excelize.File, sheetName string) {
+func addResults(f *excelize.File, styles map[string]int) {
+	const textRStudio = "Расчет проводили с помощью программы R.Studio по скрипту " +
+		"Сomparisons_with_control+outliers (cond+ghz+thz+el+nmr)_260529. " +
+		"За достоверный результат принимали расчетное значение p.value < 0.05."
+	const sheet = "выводы"
+	idx, err := f.NewSheet(sheet)
+	defer func(idx int, err error) {
+		f.SetActiveSheet(idx)
+		if err != nil {
+			log.Print(err.Error())
+		}
+	}(idx, err)
+
+	addHeader(f, sheet, styles)
+
+	err = f.SetRowHeight(sheet, 11, 48)
+	err = f.SetColWidth(sheet, "A", "A", 15)
+	err = f.MergeCell(sheet, "M1", "S4")
+	err = f.SetCellStr(sheet, "M1", textRStudio)
+	err = f.SetCellStyle(sheet, "M1", "S4", styles["styleRStudio"])
+	err = f.MergeCell(sheet, "A11", "A12")
+	err = f.MergeCell(sheet, "B11", "B12")
+	err = f.MergeCell(sheet, "C11", "C12")
+	err = f.MergeCell(sheet, "D11", "D12")
+	err = f.MergeCell(sheet, "E11", "E12")
+	err = f.MergeCell(sheet, "F11", "J11")
+	err = f.MergeCell(sheet, "K11", "M11")
+	err = f.MergeCell(sheet, "A13", "A22")
+	err = f.MergeCell(sheet, "B13", "B22")
+	err = f.SetCellStyle(sheet, "B11", "M11", styles["styleH"])
+	err = f.SetCellStyle(sheet, "A11", "M22", styles["style"])
+
+}
+
+func addHeaderPage(f *excelize.File, styles map[string]int) {
+
+	const experiment = "Оценка размеров частиц р-ра"
+	const explanation = "Целью эксперимента являлось оценить размеры частиц"
+	const sheet = "пробоподготовка"
+	err := f.MergeCell(sheet, "A4", "A11")
+	err = f.MergeCell(sheet, "B4", "M11")
+	err = f.MergeCell(sheet, "B1", "M1")
+	err = f.MergeCell(sheet, "B2", "M2")
+	err = f.MergeCell(sheet, "B3", "M3")
+	err = f.MergeCell(sheet, "B12", "M12")
+	err = f.SetCellStr(sheet, "A1", "Эксперимент:")
+	err = f.SetCellStr(sheet, "A2", "Дата:")
+	err = f.SetCellStr(sheet, "A3", "Исполнитель:")
+	err = f.SetCellStr(sheet, "A4", "Описание:")
+	err = f.SetCellStr(sheet, "A12", "Пробоподготовка")
+	err = f.SetCellStyle(sheet, "A1", "M12", styles["style"])
+	err = f.SetColWidth(sheet, "B", "A", 20)
+	err = f.SetColWidth(sheet, "B", "M", 17)
+	err = f.SetRowHeight(sheet, 1, 39)
+	err = f.SetRowHeight(sheet, 3, 23.3)
+	err = f.SetRowHeight(sheet, 11, 137.3)
+	err = f.SetRowHeight(sheet, 12, 184.5)
+	err = f.SetCellStr(sheet, "B1", experiment)
+	err = f.SetCellValue(sheet, "B2", time.Now().Format("02.01.2006"))
+	err = f.SetCellStr(sheet, "B3", "")
+	err = f.SetCellStr(sheet, "B4", explanation)
+	err = f.SetCellStr(sheet, "B12", sheet)
+	if err != nil {
+		log.Print(err.Error())
+	}
+}
+
+func addHeader(f *excelize.File, sheet string, styles map[string]int) {
+	err := f.MergeCell(sheet, "A4", "A8")
+	err = f.MergeCell(sheet, "B4", "K8")
+	err = f.MergeCell(sheet, "B1", "K1")
+	err = f.MergeCell(sheet, "B2", "K2")
+	err = f.MergeCell(sheet, "B3", "K3")
+	err = f.SetCellFormula(sheet, "A1", "пробоподготовка!A1")
+	err = f.SetCellFormula(sheet, "B1", "пробоподготовка!B1")
+	err = f.SetCellFormula(sheet, "A2", "пробоподготовка!A2")
+	err = f.SetCellFormula(sheet, "B2", "пробоподготовка!B2")
+	err = f.SetCellFormula(sheet, "A3", "пробоподготовка!A3")
+	err = f.SetCellFormula(sheet, "B3", "пробоподготовка!B3")
+	err = f.SetCellFormula(sheet, "A4", "пробоподготовка!A4")
+	err = f.SetCellFormula(sheet, "B4", "пробоподготовка!B4")
+	err = f.SetCellStyle(sheet, "A1", "K8", styles["style"])
+	if err != nil {
+		log.Print(err.Error())
+	}
+}
+
+func singlePeak(f *excelize.File, sheetName string, styles map[string]int) {
 
 	rows, err := f.GetRows(sheetName)
 	if err != nil {
 		log.Print(err.Error())
 	}
 
-	var DataTables []map[int]float64
+	var (
+		DataTables []map[int]float64
+		resultSP   []float64 // R, нм (Position)
+	)
 
 	for i, row := range rows {
 		if len(row) > 0 && strings.Contains(row[0], "Peak Num") {
@@ -68,8 +161,6 @@ func singlePeak(f *excelize.File, sheetName string) {
 			DataTables = append(DataTables, readTable(rows, i))
 		}
 	}
-
-	var resultSP []float64 // R, нм (Position)
 
 	for _, table := range DataTables {
 
@@ -102,19 +193,25 @@ func singlePeak(f *excelize.File, sheetName string) {
 
 	//log.Print("rateOf: ", rateOf)
 
-	addTable(f, sheetName, "G26", 0, resultSP, rateOf)
+	addTable(f, sheetName, styles, "G26", 0, resultSP, rateOf)
+
+	addHeader(f, sheetName, styles)
 
 	log.Print("singlePeak done in " + sheetName)
 }
 
-func doublePeak(f *excelize.File, sheetName string) {
+func doublePeak(f *excelize.File, sheetName string, styles map[string]int) {
 
 	rows, err := f.GetRows(sheetName)
 	if err != nil {
 		log.Print(err.Error())
 	}
 
-	var DataTables []map[int]float64
+	var (
+		DataTables  []map[int]float64
+		firstPeaks  []float64 // R, нм (Position) для 1 таблицы
+		secondPeaks []float64 // R, нм (Position) для 2 таблицы
+	)
 
 	for i, row := range rows {
 		if len(row) > 0 && strings.Contains(row[0], "Peak Num") {
@@ -122,11 +219,6 @@ func doublePeak(f *excelize.File, sheetName string) {
 			DataTables = append(DataTables, readTable(rows, i))
 		}
 	}
-
-	var (
-		firstPeaks  []float64 // R, нм (Position) для 1 таблицы
-		secondPeaks []float64 // R, нм (Position) для 2 таблицы
-	)
 
 	for _, table := range DataTables {
 
@@ -167,11 +259,11 @@ func doublePeak(f *excelize.File, sheetName string) {
 
 		if positions[maxIdx] == firstPeak {
 
-			smaxArea := -1
+			sMaxArea := -1
 			secondIdx := -1
 			for i, area := range areas {
-				if i != maxIdx && area > smaxArea {
-					smaxArea = area
+				if i != maxIdx && area > sMaxArea {
+					sMaxArea = area
 					secondIdx = i
 				}
 			}
@@ -204,9 +296,11 @@ func doublePeak(f *excelize.File, sheetName string) {
 
 	//log.Print("rateOf: ", rateOf)
 
-	addTable(f, sheetName, "G26", 1, firstPeaks, rateOf)
+	addTable(f, sheetName, styles, "G26", 1, firstPeaks, rateOf)
 
-	addTable(f, sheetName, "O26", 2, secondPeaks, rateOf)
+	addTable(f, sheetName, styles, "O26", 2, secondPeaks, rateOf)
+
+	addHeader(f, sheetName, styles)
 
 	log.Print("doublePeak done in " + sheetName)
 }
@@ -277,94 +371,8 @@ func readTable(dataRows [][]string, i int) map[int]float64 {
 	return ans
 }
 
-// Файл, лист, левая верхняя ячейка, номер пика (0 - единственный), данные, данные
-func addTable(f *excelize.File, sheetName string, rCell string, n int, data []float64, rateOf []int) {
-
-	decimalPlaces := 2
-	style, err := f.NewStyle(&excelize.Style{
-		DecimalPlaces: &decimalPlaces,
-		Alignment: &excelize.Alignment{
-			Horizontal: "center",
-			Vertical:   "center",
-		},
-		Border: []excelize.Border{
-			{Type: "top", Color: "000000", Style: 1},
-			{Type: "bottom", Color: "000000", Style: 1},
-			{Type: "left", Color: "000000", Style: 1},
-			{Type: "right", Color: "000000", Style: 1},
-			{Type: "horizontal", Color: "000000", Style: 1},
-			{Type: "vertical", Color: "000000", Style: 1},
-		},
-	})
-	styleH, err := f.NewStyle(&excelize.Style{
-		Alignment: &excelize.Alignment{
-			Horizontal: "center",
-			Vertical:   "center",
-		},
-		Fill: excelize.Fill{
-			Type:    "pattern",          // Тип заливки
-			Color:   []string{"D3D3D3"}, // Светло-серый цвет
-			Pattern: 1,                  // Сплошная заливка
-		},
-		Border: []excelize.Border{
-			{Type: "top", Color: "000000", Style: 1},
-			{Type: "bottom", Color: "000000", Style: 1},
-			{Type: "left", Color: "000000", Style: 1},
-			{Type: "right", Color: "000000", Style: 1},
-			{Type: "horizontal", Color: "000000", Style: 1},
-			{Type: "vertical", Color: "000000", Style: 1},
-		},
-	})
-
-	styleCV, err := f.NewStyle(&excelize.Style{
-		NumFmt: 9,
-		Alignment: &excelize.Alignment{
-			Horizontal: "center",
-			Vertical:   "center",
-		},
-		Border: []excelize.Border{
-			{Type: "top", Color: "000000", Style: 1},
-			{Type: "bottom", Color: "000000", Style: 1},
-			{Type: "left", Color: "000000", Style: 1},
-			{Type: "right", Color: "000000", Style: 1},
-			{Type: "horizontal", Color: "000000", Style: 1},
-			{Type: "vertical", Color: "000000", Style: 1},
-		},
-	})
-	styleRate, err := f.NewStyle(&excelize.Style{
-		NumFmt: 1,
-		Alignment: &excelize.Alignment{
-			Horizontal: "center",
-			Vertical:   "center",
-		},
-		Border: []excelize.Border{
-			{Type: "top", Color: "000000", Style: 1},
-			{Type: "bottom", Color: "000000", Style: 1},
-			{Type: "left", Color: "000000", Style: 1},
-			{Type: "right", Color: "000000", Style: 1},
-			{Type: "horizontal", Color: "000000", Style: 1},
-			{Type: "vertical", Color: "000000", Style: 1},
-		},
-	})
-	CustomNumFmtSDS := "0.000"
-	styleDSD, err := f.NewStyle(&excelize.Style{
-		CustomNumFmt: &CustomNumFmtSDS,
-		Alignment: &excelize.Alignment{
-			Horizontal: "center",
-			Vertical:   "center",
-		},
-		Border: []excelize.Border{
-			{Type: "top", Color: "000000", Style: 1},
-			{Type: "bottom", Color: "000000", Style: 1},
-			{Type: "left", Color: "000000", Style: 1},
-			{Type: "right", Color: "000000", Style: 1},
-			{Type: "horizontal", Color: "000000", Style: 1},
-			{Type: "vertical", Color: "000000", Style: 1},
-		},
-	})
-	if err != nil {
-		log.Print(err.Error())
-	}
+func addTable(f *excelize.File, sheetName string, styles map[string]int,
+	rCell string, n int, data []float64, rateOf []int) {
 
 	column, row, err := excelize.CellNameToCoordinates(rCell)
 	if err != nil {
@@ -471,6 +479,11 @@ func addTable(f *excelize.File, sheetName string, rCell string, n int, data []fl
 			log.Print(err.Error())
 		}
 
+		dataCell, err := excelize.CoordinatesToCellName(column-1, row+i)
+		if err != nil {
+			log.Print(err.Error())
+		}
+
 		if d == 0 {
 			err = f.SetCellValue(sheetName, cell, "-")
 			if err != nil {
@@ -479,7 +492,7 @@ func addTable(f *excelize.File, sheetName string, rCell string, n int, data []fl
 			continue
 		}
 
-		err = f.SetCellValue(sheetName, cell, d*2)
+		err = f.SetCellFormula(sheetName, cell, dataCell+"*2")
 		if err != nil {
 			log.Print(err.Error())
 		}
@@ -555,27 +568,15 @@ func addTable(f *excelize.File, sheetName string, rCell string, n int, data []fl
 
 	log.Printf("%s: %s - %s", sheetName, tlRCell, brRCell)
 
-	err = f.SetCellStyle(sheetName, tlStyleCell, brStyleCell, style)
-	if err != nil {
-		log.Print(err.Error())
-	}
+	err = f.SetCellStyle(sheetName, tlStyleCell, brStyleCell, styles["style"])
 
-	err = f.SetCellStyle(sheetName, tlRCell, brRCell, styleRate)
-	if err != nil {
-		log.Print(err.Error())
-	}
+	err = f.SetCellStyle(sheetName, tlRCell, brRCell, styles["styleRate"])
 
-	err = f.SetCellStyle(sheetName, fCell, fCell, styleCV)
-	if err != nil {
-		log.Print(err.Error())
-	}
+	err = f.SetCellStyle(sheetName, fCell, fCell, styles["styleCV"])
 
-	err = f.SetCellStyle(sheetName, tlhCell, brhCell, styleH)
-	if err != nil {
-		log.Print(err.Error())
-	}
+	err = f.SetCellStyle(sheetName, tlhCell, brhCell, styles["styleH"])
 
-	err = f.SetCellStyle(sheetName, dCell, sdCell, styleDSD)
+	err = f.SetCellStyle(sheetName, dCell, sdCell, styles["styleDSD"])
 	if err != nil {
 		log.Print(err.Error())
 	}
@@ -628,6 +629,125 @@ func setFormulaGap(f *excelize.File, sheetName, formula string, column, row, dat
 	if err != nil {
 		log.Print(err.Error())
 	}
+}
+
+func getStyles(f *excelize.File) map[string]int {
+
+	var (
+		styles        = make(map[string]int)
+		decimalPlaces = 2
+	)
+	style, err := f.NewStyle(&excelize.Style{
+		DecimalPlaces: &decimalPlaces,
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "horizontal", Color: "000000", Style: 1},
+			{Type: "vertical", Color: "000000", Style: 1},
+		},
+	}) // Таблица + округление 2 знака
+	styles["style"] = style
+	styleH, err := f.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+		Fill: excelize.Fill{
+			Type:    "pattern",          // Тип заливки
+			Color:   []string{"D3D3D3"}, // Светло-серый цвет
+			Pattern: 1,                  // Сплошная заливка
+		},
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "horizontal", Color: "000000", Style: 1},
+			{Type: "vertical", Color: "000000", Style: 1},
+		},
+	}) // Шапка таблицы
+	styles["styleH"] = styleH
+	styleCV, err := f.NewStyle(&excelize.Style{
+		NumFmt: 9,
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "horizontal", Color: "000000", Style: 1},
+			{Type: "vertical", Color: "000000", Style: 1},
+		},
+	}) // CV
+	styles["styleCV"] = styleCV
+	styleRate, err := f.NewStyle(&excelize.Style{
+		NumFmt: 1,
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "horizontal", Color: "000000", Style: 1},
+			{Type: "vertical", Color: "000000", Style: 1},
+		},
+	}) // Колонка Rate Of...
+	styles["styleRate"] = styleRate
+	CustomNumFmtSDS := "0.000"
+	styleDSD, err := f.NewStyle(&excelize.Style{
+		CustomNumFmt: &CustomNumFmtSDS,
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "horizontal", Color: "000000", Style: 1},
+			{Type: "vertical", Color: "000000", Style: 1},
+		},
+	}) // D mean и SD
+	styles["styleDSD"] = styleDSD
+	styleRStudio, err := f.NewStyle(&excelize.Style{
+		Fill: excelize.Fill{
+			Type:    "pattern",
+			Color:   []string{"#FFF2CC"},
+			Pattern: 1,
+		},
+		Alignment: &excelize.Alignment{
+			WrapText:   true,
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "horizontal", Color: "000000", Style: 1},
+			{Type: "vertical", Color: "000000", Style: 1},
+		},
+	}) // R.Studio
+	styles["styleRStudio"] = styleRStudio
+	if err != nil {
+		log.Print(err.Error())
+	}
+
+	return styles
 }
 
 //func setFormula(f *excelize.File, sheetName, formula string, column, row int, dataCells []string) {
