@@ -38,12 +38,15 @@ func calculate(fileName string) string {
 
 	addHeaderPage(f, styles)
 
+	movePBS(f)
+
+	var dataLen int
 	for _, sheet := range f.GetSheetList() {
 		if strings.Contains(sheet, "PBS") ||
 			strings.Contains(sheet, "BSA") ||
 			strings.Contains(sheet, "latex") {
 
-			singlePeak(f, sheet, styles)
+			dataLen = singlePeak(f, sheet, styles)
 			continue
 		}
 		if strings.Contains(sheet, "Смесь") {
@@ -51,12 +54,16 @@ func calculate(fileName string) string {
 		}
 	}
 
-	addResults(f, styles)
+	if dataLen == 0 {
+		return "Ой... я не смог посчитать количество пиков("
+	}
+
+	addResults(f, dataLen, styles)
 
 	return "Посчитал " + fileName + " за " + time.Since(start).String()
 }
 
-func addResults(f *excelize.File, styles map[string]int) {
+func addResults(f *excelize.File, dataLen int, styles map[string]int) {
 	const textRStudio = "Расчет проводили с помощью программы R.Studio по скрипту " +
 		"Сomparisons_with_control+outliers (cond+ghz+thz+el+nmr)_260529. " +
 		"За достоверный результат принимали расчетное значение p.value < 0.05."
@@ -81,13 +88,105 @@ func addResults(f *excelize.File, styles map[string]int) {
 	err = f.MergeCell(sheet, "C11", "C12")
 	err = f.MergeCell(sheet, "D11", "D12")
 	err = f.MergeCell(sheet, "E11", "E12")
-	err = f.MergeCell(sheet, "F11", "J11")
+	err = f.MergeCell(sheet, "F11", "J11") // TODO: в зависимости от dataLen
 	err = f.MergeCell(sheet, "K11", "M11")
-	err = f.MergeCell(sheet, "A13", "A22")
-	err = f.MergeCell(sheet, "B13", "B22")
-	err = f.SetCellStyle(sheet, "B11", "M11", styles["styleH"])
-	err = f.SetCellStyle(sheet, "A11", "M22", styles["style"])
 
+	var sheetList []string
+	for _, sheet := range f.GetSheetList() {
+		if sheet == "пробоподготовка" || strings.Contains(sheet, "latex") {
+			continue
+		}
+		sheetList = append(sheetList, sheet)
+	}
+
+	allData := getResultTables(f, sheetList, dataLen) // массив страниц с массивами таблиц с массивами пиков (D mean)
+	rRow := 0
+
+	for i, tables := range allData { // идём по страницам
+
+		if len(tables) == 2 {
+
+		}
+
+		for _, table := range tables { // идём по таблицам
+
+			addResultRow(f, sheetList[i], rRow, table, styles) // добавляем пики из таблицы
+			rRow++
+
+		}
+
+	}
+
+	//for _, sheet := range sheetList {
+	//	if strings.Contains(sheet, "PBS") && sheet != "пробоподготовка" {
+	//		addResultRow(f, sheet, styles)
+	//	}
+	//}
+	//
+	//for _, sheet := range sheetList {
+	//	if !strings.Contains(sheet, "PBS") && sheet != "пробоподготовка" {
+	//		addResultRow(f, sheet, styles)
+	//	}
+	//}
+
+	//err = f.MergeCell(sheet, "A13", "A22")
+	//err = f.MergeCell(sheet, "B13", "B22")
+	err = f.SetCellStyle(sheet, "B11", "M11", styles["styleH"])
+	//err = f.SetCellStyle(sheet, "A11", "M22", styles["style"])
+
+}
+
+func addResultRow(f *excelize.File, sheet string, rRow int, data []string, styles map[string]int) {
+
+}
+
+// Собирает все пики (D mean) по всем таблицам со всех страниц
+func getResultTables(f *excelize.File, sheetList []string, dataLen int) [][][]string {
+
+	var (
+		result [][][]string // Страницы, таблицы, данные
+		tables [][]string
+	)
+
+	for _, sheet := range sheetList {
+
+		tables = append(tables, readResultTable(f, sheet, 9, dataLen))
+
+		if strings.Contains(sheet, "Смесь") {
+			tables = append(tables, readResultTable(f, sheet, 17, dataLen))
+		}
+
+		result = append(result, tables)
+
+	}
+
+	return result
+}
+
+// Собирает пики из таблиц с одной страницы
+func readResultTable(f *excelize.File, sheet string, tColumn, dataLen int) []string {
+
+	var (
+		table []string
+		tRow  = 28
+	)
+
+	for range dataLen {
+		cell, err := excelize.CoordinatesToCellName(tColumn, tRow)
+		if err != nil {
+			log.Print(err.Error())
+		}
+
+		value, err := f.GetCellValue(sheet, cell)
+		if err != nil {
+			log.Print(err.Error())
+		}
+
+		table = append(table, value)
+		tRow++
+	}
+
+	return table
 }
 
 func addHeaderPage(f *excelize.File, styles map[string]int) {
@@ -123,6 +222,34 @@ func addHeaderPage(f *excelize.File, styles map[string]int) {
 	}
 }
 
+func movePBS(f *excelize.File) {
+
+	var (
+		pbsIndex = -1
+		pbsName  = ""
+	)
+
+	sheetList := f.GetSheetList()
+
+	for i, name := range sheetList {
+		if strings.Contains(strings.ToUpper(name), strings.ToUpper("PBS")) {
+			pbsIndex = i
+			pbsName = name
+			break
+		}
+	}
+
+	if pbsName == "" || pbsIndex == -1 {
+		return
+	}
+
+	err := f.MoveSheet(pbsName, sheetList[1])
+	if err != nil {
+		log.Print(err.Error())
+	}
+
+}
+
 func addHeader(f *excelize.File, sheet string, styles map[string]int) {
 	err := f.MergeCell(sheet, "A4", "A8")
 	err = f.MergeCell(sheet, "B4", "K8")
@@ -143,7 +270,7 @@ func addHeader(f *excelize.File, sheet string, styles map[string]int) {
 	}
 }
 
-func singlePeak(f *excelize.File, sheetName string, styles map[string]int) {
+func singlePeak(f *excelize.File, sheetName string, styles map[string]int) int {
 
 	rows, err := f.GetRows(sheetName)
 	if err != nil {
@@ -189,7 +316,7 @@ func singlePeak(f *excelize.File, sheetName string, styles map[string]int) {
 
 	//log.Print("resultSP: ", resultSP)
 
-	rateOf := makeRateOf(rows)
+	rateOf, dataLen := makeRateOf(rows)
 
 	//log.Print("rateOf: ", rateOf)
 
@@ -198,6 +325,8 @@ func singlePeak(f *excelize.File, sheetName string, styles map[string]int) {
 	addHeader(f, sheetName, styles)
 
 	log.Print("singlePeak done in " + sheetName)
+
+	return dataLen
 }
 
 func doublePeak(f *excelize.File, sheetName string, styles map[string]int) {
@@ -292,7 +421,7 @@ func doublePeak(f *excelize.File, sheetName string, styles map[string]int) {
 
 	}
 
-	rateOf := makeRateOf(rows)
+	rateOf, _ := makeRateOf(rows)
 
 	//log.Print("rateOf: ", rateOf)
 
@@ -305,7 +434,7 @@ func doublePeak(f *excelize.File, sheetName string, styles map[string]int) {
 	log.Print("doublePeak done in " + sheetName)
 }
 
-func makeRateOf(rows [][]string) []int {
+func makeRateOf(rows [][]string) ([]int, int) {
 
 	var rateOf []int
 	i := 13
@@ -329,7 +458,7 @@ func makeRateOf(rows [][]string) []int {
 
 		r = rows[i][4]
 	}
-	return rateOf
+	return rateOf, i - 13
 }
 
 func readTable(dataRows [][]string, i int) map[int]float64 {
@@ -601,7 +730,8 @@ func merge(f *excelize.File, sheetName string, column, cl, row, rl int) {
 	}
 }
 
-func setFormulaGap(f *excelize.File, sheetName, formula string, column, row, dataColumn, dcl, dataRow, drl int) {
+func setFormulaGap(f *excelize.File, sheetName, formula string, column, row,
+	dataColumn, dcl, dataRow, drl int) {
 	fCell, err := excelize.CoordinatesToCellName(column, row)
 	if err != nil {
 		log.Print(err.Error())
@@ -749,17 +879,3 @@ func getStyles(f *excelize.File) map[string]int {
 
 	return styles
 }
-
-//func setFormula(f *excelize.File, sheetName, formula string, column, row int, dataCells []string) {
-//	fCell, err := excelize.CoordinatesToCellName(column, row)
-//	if err != nil {
-//		log.Print(err.Error())
-//	}
-//
-//	resultFormula := formula + "(" + strings.Join(dataCells, ";") + ")"
-//
-//	err = f.SetCellFormula(sheetName, fCell, resultFormula)
-//	if err != nil {
-//		log.Print(err.Error())
-//	}
-//}
