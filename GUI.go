@@ -14,6 +14,8 @@ func GUI(version, filesFolder string, countOfFiles *int) {
 		inputFolder  *walk.LineEdit
 		inputOrder   *walk.LineEdit
 		inputName    *walk.LineEdit
+		inputMin     *walk.LineEdit
+		inputMax     *walk.LineEdit
 		statusFiles  *walk.TextEdit
 		statusSearch *walk.Label
 		statusProg   *walk.TextEdit
@@ -85,6 +87,26 @@ func GUI(version, filesFolder string, countOfFiles *int) {
 
 			HSplitter{
 				Children: []Widget{
+					//TextLabel{Text: "Критерии оценки пиков:"},
+					TextLabel{Text: "Минимум"},
+					LineEdit{
+						AssignTo: &inputMin,
+						Text:     "2.9",
+						//MinSize:  Size{Width: 80, Height: 25},
+						//MaxSize:  Size{Width: 80, Height: 25},
+					},
+					TextLabel{Text: "Максимум"},
+					LineEdit{
+						AssignTo: &inputMax,
+						Text:     "9.0",
+						//MinSize:  Size{Width: 80, Height: 25},
+						//MaxSize:  Size{Width: 80, Height: 25},
+					},
+				},
+			},
+
+			HSplitter{
+				Children: []Widget{
 					PushButton{
 						MaxSize: Size{Width: 100, Height: 25},
 						Text:    "Создать .xlsx",
@@ -112,7 +134,9 @@ func GUI(version, filesFolder string, countOfFiles *int) {
 							}
 							order := inputOrder.Text()
 							name := inputName.Text()
-							err = statusProg.SetText(calculate(createFileName(order, name)))
+							KMin := inputMin.Text()
+							KMax := inputMax.Text()
+							err = statusProg.SetText(calculate(createFileName(order, name), KMin, KMax))
 							if err != nil {
 								log.Panic(err.Error())
 							}

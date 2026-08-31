@@ -10,10 +10,22 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-func calculate(fileName string) string {
+func calculate(fileName, KMin, KMax string) string {
 
 	start := time.Now()
 	defer func() { log.Print("Обработка файла: ", time.Since(start)) }()
+
+	KMinF, err := strconv.ParseFloat(KMin, 64)
+	if err != nil {
+		log.Print(err.Error())
+		return "Ошибка чтения значения минимального критерия"
+	}
+
+	KMaxF, err := strconv.ParseFloat(KMax, 64)
+	if err != nil {
+		log.Print(err.Error())
+		return "Ошибка чтения значения максимального критерия"
+	}
 
 	f, err := excelize.OpenFile(fileName)
 	if err != nil {
@@ -46,11 +58,11 @@ func calculate(fileName string) string {
 			strings.Contains(sheet, "BSA") ||
 			strings.Contains(sheet, "latex") {
 
-			dataLen = singlePeak(f, sheet, styles)
+			dataLen = singlePeak(f, sheet, KMinF, KMaxF, styles)
 			continue
 		}
 		if strings.Contains(sheet, "Смесь") {
-			doublePeak(f, sheet, styles)
+			doublePeak(f, sheet, KMinF, KMaxF, styles)
 		}
 	}
 
@@ -58,7 +70,7 @@ func calculate(fileName string) string {
 		return "Ой... я не смог посчитать количество пиков("
 	}
 
-	addResults(f, dataLen, styles)
+	//addResults(f, dataLen, styles)
 
 	return "Посчитал " + fileName + " за " + time.Since(start).String()
 }
@@ -270,7 +282,7 @@ func addHeader(f *excelize.File, sheet string, styles map[string]int) {
 	}
 }
 
-func singlePeak(f *excelize.File, sheetName string, styles map[string]int) int {
+func singlePeak(f *excelize.File, sheetName string, KMinF, KMaxF float64, styles map[string]int) int {
 
 	rows, err := f.GetRows(sheetName)
 	if err != nil {
@@ -303,15 +315,36 @@ func singlePeak(f *excelize.File, sheetName string, styles map[string]int) int {
 		//log.Print("areas: ", areas)
 
 		ans := areas[0]
-		for _, area := range areas {
+		maxIdx := 0
+		for i, area := range areas {
 			if area > ans {
 				ans = area
+				maxIdx = i
 			}
 		}
 
 		//log.Print("answer: ", ans)
 
-		resultSP = append(resultSP, table[ans])
+		if positions[maxIdx] > KMinF || positions[maxIdx] < KMaxF {
+			resultSP = append(resultSP, table[ans])
+		} else {
+
+			sMaxArea := -1
+			//secondIdx := -1
+			for i, area := range areas {
+				if i != maxIdx && area > sMaxArea {
+					sMaxArea = area
+					//secondIdx = i
+				}
+			}
+
+			resultSP = append(resultSP, table[sMaxArea])
+
+			//if positions[secondIdx] > KMinF || positions[secondIdx] < KMaxF {
+			//}
+
+		}
+
 	}
 
 	//log.Print("resultSP: ", resultSP)
@@ -329,7 +362,7 @@ func singlePeak(f *excelize.File, sheetName string, styles map[string]int) int {
 	return dataLen
 }
 
-func doublePeak(f *excelize.File, sheetName string, styles map[string]int) {
+func doublePeak(f *excelize.File, sheetName string, KMinF, KMaxF float64, styles map[string]int) {
 
 	rows, err := f.GetRows(sheetName)
 	if err != nil {
@@ -371,7 +404,7 @@ func doublePeak(f *excelize.File, sheetName string, styles map[string]int) {
 		}
 
 		for j, position := range positions {
-			if 3.9 < position && position < 9.0 && areas[j] > 100 {
+			if KMinF < position && position < KMaxF && areas[j] > 100 {
 				firstPeak = position
 				break
 			}
