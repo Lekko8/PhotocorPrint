@@ -10,7 +10,7 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-func calculate(fileName, KMin, KMax string) string {
+func calculate(fileName, KMin, KMax, KSec string) string {
 
 	start := time.Now()
 	defer func() { log.Print("Обработка файла: ", time.Since(start)) }()
@@ -25,6 +25,12 @@ func calculate(fileName, KMin, KMax string) string {
 	if err != nil {
 		log.Print(err.Error())
 		return "Ошибка чтения значения максимального критерия"
+	}
+
+	KSecF, err := strconv.ParseFloat(KSec, 64)
+	if err != nil {
+		log.Print(err.Error())
+		return "Ошибка чтения значения второго критерия"
 	}
 
 	f, err := excelize.OpenFile(fileName)
@@ -62,7 +68,7 @@ func calculate(fileName, KMin, KMax string) string {
 			continue
 		}
 		if strings.Contains(sheet, "Смесь") {
-			doublePeak(f, sheet, KMinF, KMaxF, styles)
+			doublePeak(f, sheet, KMinF, KMaxF, KSecF, styles)
 		}
 	}
 
@@ -362,7 +368,7 @@ func singlePeak(f *excelize.File, sheetName string, KMinF, KMaxF float64, styles
 	return dataLen
 }
 
-func doublePeak(f *excelize.File, sheetName string, KMinF, KMaxF float64, styles map[string]int) {
+func doublePeak(f *excelize.File, sheetName string, KMinF, KMaxF, KSecF float64, styles map[string]int) {
 
 	rows, err := f.GetRows(sheetName)
 	if err != nil {
@@ -442,7 +448,7 @@ func doublePeak(f *excelize.File, sheetName string, KMinF, KMaxF float64, styles
 
 		}
 
-		if positions[maxIdx] < 30 && areas[maxIdx] > 100 {
+		if positions[maxIdx] < KSecF && areas[maxIdx] > 100 {
 			firstPeaks = append(firstPeaks, firstPeak)
 			secondPeaks = append(secondPeaks, positions[maxIdx])
 			continue

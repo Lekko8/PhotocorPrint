@@ -10,7 +10,7 @@ import (
 func main() {
 
 	var (
-		version     = "версия от 31.08.2026"
+		version     = "версия от 03.09.2026"
 		filesFolder = "C:\\Users\\" + getUserName() +
 			"\\Desktop\\Photocor\\" +
 			strconv.Itoa(time.Now().Year()) + "\\" +

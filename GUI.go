@@ -16,6 +16,7 @@ func GUI(version, filesFolder string, countOfFiles *int) {
 		inputName    *walk.LineEdit
 		inputMin     *walk.LineEdit
 		inputMax     *walk.LineEdit
+		inputSec     *walk.LineEdit
 		statusFiles  *walk.TextEdit
 		statusSearch *walk.Label
 		statusProg   *walk.TextEdit
@@ -102,6 +103,13 @@ func GUI(version, filesFolder string, countOfFiles *int) {
 						//MinSize:  Size{Width: 80, Height: 25},
 						//MaxSize:  Size{Width: 80, Height: 25},
 					},
+					TextLabel{Text: "Второй пик"},
+					LineEdit{
+						AssignTo: &inputSec,
+						Text:     "30",
+						//MinSize:  Size{Width: 80, Height: 25},
+						//MaxSize:  Size{Width: 80, Height: 25},
+					},
 				},
 			},
 
@@ -136,7 +144,8 @@ func GUI(version, filesFolder string, countOfFiles *int) {
 							name := inputName.Text()
 							KMin := inputMin.Text()
 							KMax := inputMax.Text()
-							err = statusProg.SetText(calculate(createFileName(order, name), KMin, KMax))
+							KSec := inputSec.Text()
+							err = statusProg.SetText(calculate(createFileName(order, name), KMin, KMax, KSec))
 							if err != nil {
 								log.Panic(err.Error())
 							}
