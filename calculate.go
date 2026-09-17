@@ -357,7 +357,7 @@ func singlePeak(f *excelize.File, sheetName string, KMinF, KMaxF float64, styles
 
 	rateOf, dataLen := makeRateOf(rows)
 
-	//log.Print("rateOf: ", rateOf)
+	log.Print("rateOf: ", rateOf)
 
 	addTable(f, sheetName, styles, "G26", 0, resultSP, rateOf)
 
@@ -477,6 +477,7 @@ func makeRateOf(rows [][]string) ([]int, int) {
 
 	var rateOf []int
 	i := 13
+	//log.Print(rows[13])
 	r := rows[i][4]
 	for i < len(rows) {
 

@@ -37,6 +37,8 @@ func initDataRead(filesFolder string) (map[string]SampleData, []string) {
 
 			Data, Err := readFile(fileName, filesFolder)
 
+			//log.Printf("В %s прочитано %v", fileName, Data)
+
 			resultChan <- WorkerResult{FileName: fileName, Data: Data, Err: Err}
 
 		}(fileName)
@@ -63,6 +65,8 @@ func initDataRead(filesFolder string) (map[string]SampleData, []string) {
 	}
 	slices.Sort(groupsList)
 	log.Println(groupsList)
+
+	//log.Println(reportMatrix)
 
 	return reportMatrix, groupsList
 }

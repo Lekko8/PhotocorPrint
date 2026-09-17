@@ -333,6 +333,11 @@ func xlsx(filesFolder, resultFileName string, reportMatrix map[string]SampleData
 				break
 			}
 			contCell = strings.TrimPrefix(contCell, "¨ ")
+			contCell = strings.Trim(contCell, "¨ ")
+
+			//log.Print(contCell)
+			//log.Print(reportMatrix[contCell])
+
 			if data, exists := reportMatrix[contCell]; exists {
 				_ = f.SetCellValue(sheetName, "D"+strconv.Itoa(i+14), data.MeanIntensity)
 				_ = f.SetCellValue(sheetName, "E"+strconv.Itoa(i+14), data.RateOfCorrectUnit)

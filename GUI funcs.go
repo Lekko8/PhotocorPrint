@@ -24,6 +24,7 @@ func readFileList(filesFolder string, countOfFiles int) string {
 		if filesList != nil {
 			groupsList = groupsList[:0] // очищаем память (сохраняя ёмкость) для чистой перезаписи
 			reportMatrix, groupsList = initDataRead(filesFolder)
+			//log.Println(reportMatrix)
 		}
 	}()
 
