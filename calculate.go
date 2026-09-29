@@ -65,15 +65,14 @@ func calculate(fileName, KMin, KMax, KSec string) string {
 			strings.Contains(sheet, "latex") {
 
 			dataLen = singlePeak(f, sheet, KMinF, KMaxF, styles)
-			continue
-		}
-		if strings.Contains(sheet, "Смесь") {
+			if dataLen == 0 {
+				return "Ой... я не смог посчитать количество пиков("
+			}
+		} else if !(strings.Contains(sheet, "пробоподготовка") ||
+			strings.Contains(sheet, "выводы")) {
+
 			doublePeak(f, sheet, KMinF, KMaxF, KSecF, styles)
 		}
-	}
-
-	if dataLen == 0 {
-		return "Ой... я не смог посчитать количество пиков("
 	}
 
 	//addResults(f, dataLen, styles)
